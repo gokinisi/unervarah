@@ -1,0 +1,9 @@
+.DS_Store
+.localized
+*.db
+subscriptions.db
+nervarah_users.db
+.env*
+*.rtf
+*.txt
+mymotivationenv/

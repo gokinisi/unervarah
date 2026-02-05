@@ -206,8 +206,11 @@
           applicationServerKey: urlBase64ToUint8Array('BFH2VW6P1cUBmZCIsb7Vgn5lWbUWo6l_2F_vz2_9ZEdPI5XPCSuSblCylqFU9IRaNj1jgGh15KvWV30Q9ck3XpA')
         });
 
-        const response = await fetch('http://localhost:5000/subscribe', {
-          method: 'POST',
+        const response = await fetch('http://nervarah.com', 
+
+await fetch('https://unervarah.onrender.com/subscribe', { ... })
+await navigator.serviceWorker.register('https://unervarah.onrender.com/sw.js');
+{method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             subscription: subscription.toJSON(),
