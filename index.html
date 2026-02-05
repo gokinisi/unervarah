@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nervarah – Daily Motivation</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #f0f4ff, #e6e9ff);
+      margin: 0;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      color: #1e293b;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      padding: 2.5rem;
+      max-width: 600px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+      color: #6366f1;
+      margin-bottom: 0.5rem;
+      font-size: 2.8rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      margin-bottom: 2rem;
+      font-size: 1.2rem;
+    }
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 2rem;
+    }
+    .option-card {
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .option-card:hover {
+      border-color: #6366f1;
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(99,102,241,0.15);
+    }
+    .option-card.selected {
+      border-color: #6366f1;
+      background: rgba(99,102,241,0.05);
+    }
+    .option-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #6366f1;
+      margin-bottom: 0.5rem;
+    }
+    .form-actions {
+      margin-top: 2rem;
+    }
+    button {
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 1rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    button:hover:not(:disabled) {
+      background: #4f46e5;
+    }
+    button:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+    .success {
+      background: #ecfdf5;
+      border: 1px solid #10b981;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+      text-align: center;
+      display: none;
+    }
+    .error {
+      color: #dc2626;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    .footer {
+      text-align: center;
+      color: #94a3b8;
+      margin-top: 2rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>✨ Nervarah</h1>
+    <p class="subtitle">Choose your daily motivation and enable notifications</p>
+
+    <div class="options-grid">
+      <div class="option-card" data-category="positive mindset">
+        <div class="option-title">Positive Mindset</div>
+        <p>Build resilience and optimism</p>
+      </div>
+      <div class="option-card" data-category="exercise boost">
+        <div class="option-title">Exercise Boost</div>
+        <p>Stay consistent and energized</p>
+      </div>
+      <div class="option-card" data-category="healthy relationship">
+        <div class="option-title">Healthy Relationships</div>
+        <p>Nurture meaningful connections</p>
+      </div>
+      <div class="option-card" data-category="healthy eating motivation">
+        <div class="option-title">Healthy Eating</div>
+        <p>Fuel your body with intention</p>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button id="enableBtn" disabled>Sign Up & Enable Notifications</button>
+    </div>
+
+    <div id="success" class="success">
+      <h2>You're In! 🎉</h2>
+      <p>Daily notifications enabled for:</p>
+      <p id="cat-display" style="font-weight:600; font-size:1.3rem; color:#6366f1;"></p>
+      <p>Sample message: <span id="sample-msg"></span></p>
+      <p>Your first message arrives tomorrow!</p>
+    </div>
+
+    <div id="errorMsg" class="error"></div>
+
+    <div class="footer">
+      Your privacy is protected • Unsubscribe anytime
+    </div>
+  </div>
+
+  <script>
+    const cards = document.querySelectorAll('.option-card');
+    const enableBtn = document.getElementById('enableBtn');
+    const successDiv = document.getElementById('success');
+    const catDisplay = document.getElementById('cat-display');
+    const sampleDisplay = document.getElementById('sample-msg');
+    const errorMsg = document.getElementById('errorMsg');
+
+    let selectedCategory = null;
+
+    // Enable button only after category is selected
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedCategory = card.dataset.category;
+        enableBtn.disabled = false;
+        enableBtn.textContent = `Sign Up & Enable for ${card.querySelector('.option-title').textContent}`;
+        errorMsg.textContent = '';
+      });
+    });
+
+    enableBtn.addEventListener('click', async () => {
+      if (!selectedCategory) {
+        errorMsg.textContent = "Please select a motivation category first.";
+        return;
+      }
+
+      enableBtn.disabled = true;
+      enableBtn.textContent = "Processing...";
+
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        errorMsg.textContent = "Push notifications not supported in this browser.";
+        enableBtn.disabled = false;
+        enableBtn.textContent = "Sign Up & Enable Notifications";
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        const permission = await Notification.requestPermission();
+
+        if (permission !== 'granted') {
+          errorMsg.textContent = "Notification permission denied. You can enable it in browser settings.";
+          enableBtn.disabled = false;
+          enableBtn.textContent = "Sign Up & Enable Notifications";
+          return;
+        }
+
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array('BFH2VW6P1cUBmZCIsb7Vgn5lWbUWo6l_2F_vz2_9ZEdPI5XPCSuSblCylqFU9IRaNj1jgGh15KvWV30Q9ck3XpA')
+        });
+
+        const response = await fetch('http://nervarah.com', 
+
+await fetch('https://unervarah.onrender.com/subscribe', { ... })
+await navigator.serviceWorker.register('https://unervarah.onrender.com/sw.js');
+{method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            category: selectedCategory
+          })
+        });
+
+        if (response.ok) {
+          const samples = {
+            "positive mindset": "You already have the power to turn today around...",
+            "exercise boost": "Your body is ready — do 5 squats...",
+            "healthy relationship": "Love grows in small moments...",
+            "healthy eating motivation": "Your body thrives on good fuel..."
+          };
+
+          catDisplay.textContent = selectedCategory;
+          sampleDisplay.textContent = samples[selectedCategory];
+          successDiv.style.display = 'block';
+          enableBtn.textContent = "Notifications Enabled!";
+        } else {
+          errorMsg.textContent = "Subscription failed. Try again.";
+          enableBtn.disabled = false;
+          enableBtn.textContent = "Sign Up & Enable Notifications";
+        }
+      } catch (err) {
+        errorMsg.textContent = "Error: " + err.message;
+        enableBtn.disabled = false;
+        enableBtn.textContent = "Sign Up & Enable Notifications";
+      }
+    });
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+ </script>
