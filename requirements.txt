@@ -2,5 +2,3 @@ flask==3.0.3
 pywebpush==1.14.0
 apscheduler==3.10.4
 gunicorn==23.0.0
-# torch==2.4.1  # commented out for Render free tier
-# transformers==4.44.2  # commented out
