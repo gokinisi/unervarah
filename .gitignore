@@ -18,3 +18,4 @@ mymotivationenv/
 mymotivationenv/
 *.rtf
 *.txt
+.DS_Store
