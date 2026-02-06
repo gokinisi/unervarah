@@ -8,6 +8,10 @@ import random
 
 app = Flask(__name__, static_folder='.', static_url_path='')  # Serve files from current folder
 
+import os
+DB_PATH = os.getenv('DB_PATH', '/app/data/subscriptions.db')  # fallback for local
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+
 # Database setup
 conn = sqlite3.connect('subscriptions.db', check_same_thread=False)
 c = conn.cursor()
