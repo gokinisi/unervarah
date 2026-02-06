@@ -9,3 +9,8 @@ nervarah_users.db
 *.txt
 !requirements.txt   # ← add this line to un-ignore requirements.txt
 mymotivationenv/
+.DS_Store
+*.db
+mymotivationenv/
+*.rtf
+*.txt
