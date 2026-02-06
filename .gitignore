@@ -6,4 +6,5 @@ nervarah_users.db
 .env*
 *.rtf
 *.txt
+!requirements.txt   # ← add this line to un-ignore requirements.txt
 mymotivationenv/
