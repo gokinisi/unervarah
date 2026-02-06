@@ -150,6 +150,19 @@ def send_test():
                 print(f"Removed expired subscription: {endpoint}")
     return f"Test pushes sent to {sent_count} subscribers"
 
+
+const response = await fetch('https://unervarah.onrender.com/', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    subscription: subscription.toJSON(),
+    category: selectedCategory,
+    email: document.getElementById('email').value.trim()
+  })
+});
+
+const registration = await navigator.serviceWorker.register('https://nervarah-backend.onrender.com/sw.js');
+
 # Daily scheduler
 def send_daily_motivations():
     c.execute("SELECT endpoint, auth, p256dh, category FROM subscriptions")
