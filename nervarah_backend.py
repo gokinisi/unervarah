@@ -35,31 +35,34 @@ VAPID_PUBLIC_KEY = "BA7mpoEQJEKRvhw2-9XUXWgI4fiYeqyKAh5x1wTv_6HeFW7oeLNyP3IOAgzD
 VAPID_PRIVATE_KEY = "fYq8-glCtPhKFc9NNfwYQiCF9F0CMlHz9yYpISSkI04"  # ← Your real private key
 VAPID_CLAIMS = {"sub": "mailto:kris@nervarah.com"}
 
-# ML model (distilgpt2 for speed)
-generator = pipeline("text-generation", model="EleutherAI/gpt-neo-125m", device=-1)
+def get_motivation(category):
+    messages = {
+        "positive mindset": [
+            "You already have the power to turn today around — take one kind act toward yourself right now (e.g., a hug, 10 min journaling, glass of water). I am worthy of my own love and care.",
+            "You are not behind — you're exactly where the next breakthrough begins. Take one small step today. I am ready for what’s next.",
+            "Your energy is magnetic when you honor it. Breathe deeply for 60 seconds. I am calm, centered, and in control."
+        ],
+        "exercise boost": [
+            "Your body is ready — do 5 squats or a 30-second stretch right now. I am strong and getting stronger every day.",
+            "One rep closer to the version of you that never quits. Start now. I am consistent and powerful.",
+            "Feel the power in your movement — stand up and shake it out for 20 seconds. I am alive and full of energy."
+        ],
+        "healthy relationship": [
+            "Love grows in small, kind moments — send one thoughtful message today. I give and receive love freely.",
+            "You deserve healthy, respectful connection — speak your truth calmly today. I am worthy of real love.",
+            "A strong relationship starts with self-love — do one act of kindness for yourself. I am enough."
+        ],
+        "healthy eating motivation": [
+            "Your body thrives on good fuel — drink a full glass of water or eat one vegetable right now. I nourish myself with love.",
+            "Every healthy choice is a vote for the future you — pick one nutritious snack today. I am healthy and energized.",
+            "You deserve food that makes you feel alive — prepare one balanced meal today. I am worthy of vibrant health."
+        ]
+    }
+    return random.choice(messages.get(category, messages["positive mindset"]))
 
-# Prompts (very directive for uplifting tone)
-PROMPTS = {
-    "positive mindset": "Write a short, warm, uplifting, and empowering motivational message to inspire positive mindset and self-belief. Use kind, supportive, encouraging language. Make the reader feel seen, capable, and full of hope. End with a powerful 'I am' affirmation. Keep it 1–2 sentences only. Example tone: 'You are already enough. I am worthy of joy.' ",
-    "exercise boost": "Write a short, energizing, positive, and motivating message to inspire someone to move their body today. Use enthusiastic, supportive, joyful language. Make them feel strong and excited to start. End with an empowering 'I am' statement. Keep it 1–2 sentences. Example tone: 'Your body is ready for this — let's go! I am strong and capable.' ",
-    "healthy relationship": "Write a short, warm, loving, and hopeful message to nurture healthy relationships and emotional connection. Use gentle, kind, supportive language. Focus on self-love, respect, and open-heartedness. End with a positive 'I am' affirmation. Keep it 1–2 sentences. Example tone: 'You deserve real love. I am worthy of kind connections.' ",
-    "healthy eating motivation": "Write a short, joyful, nourishing, and self-loving message to encourage healthy eating habits. Use positive, caring, celebratory language. Make the reader feel excited to fuel their body with love. End with an empowering 'I am' statement. Keep it 1–2 sentences. Example tone: 'Choose food that lights you up. I am worthy of vibrant health.' "
-}
-
-def generate_ml_motivation(category):
-    prompt = PROMPTS.get(category, PROMPTS["positive mindset"])
-    result = generator(
-        prompt,
-        max_new_tokens=50,
-        num_return_sequences=1,
-        temperature=0.7,
-        top_p=0.9,
-        do_sample=True,
-        repetition_penalty=1.3,
-        pad_token_id=generator.tokenizer.eos_token_id
+message = random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))
     )
-    message = result[0]['generated_text'].replace(prompt, '').strip()
-    message = ''.join(c for c in message if c.isprintable())
+message = random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))    message = ''.join(c for c in message if c.isprintable())
     return message[:160] or "You are enough, right now. I am worthy of love."
 
 def clean_uplifting_message(message):
@@ -137,8 +140,7 @@ def send_test():
         return "No subscribers yet"
     sent_count = 0
     for endpoint, auth, p256dh, category in subs:
-        message = generate_ml_motivation(category)
-        message = clean_uplifting_message(message)
+message = random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))        message = clean_uplifting_message(message)
         data = json.dumps({
             "title": "Nervarah Daily Motivation",
             "body": message
@@ -169,8 +171,7 @@ def send_daily_motivations():
         return
     print(f"Starting daily send to {len(subs)} subscribers at {datetime.now()}")
     for endpoint, auth, p256dh, category in subs:
-        message = generate_ml_motivation(category)
-        message = clean_uplifting_message(message)
+message = random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))        message = clean_uplifting_message(message)
         data = json.dumps({
             "title": "Nervarah Daily Motivation",
             "body": message
