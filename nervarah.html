@@ -65,6 +65,28 @@
       color: #6366f1;
       margin-bottom: 0.5rem;
     }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #475569;
+    }
+    input {
+      width: 100%;
+      padding: 0.9rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    input:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
     .form-actions {
       margin-top: 2rem;
     }
@@ -100,6 +122,7 @@
       color: #dc2626;
       text-align: center;
       margin-top: 1rem;
+      min-height: 1.2rem;
     }
     .footer {
       text-align: center;
@@ -112,7 +135,7 @@
 <body>
   <div class="container">
     <h1>✨ Nervarah</h1>
-    <p class="subtitle">Choose your daily motivation and enable notifications</p>
+    <p class="subtitle">Choose your focus • Get daily motivation in-person meetup inspiration</p>
 
     <div class="options-grid">
       <div class="option-card" data-category="positive mindset">
@@ -134,18 +157,26 @@
     </div>
 
     <div class="form-actions">
-      <label for="email">Email address (optional)</label>
-      <input type="email" id="email" placeholder="you@example.com" />
+      <div class="form-group">
+        <label for="name">First Name <span style="color:#dc2626;">*</span></label>
+        <input type="text" id="name" placeholder="Alex" required />
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email address <span style="color:#dc2626;">*</span></label>
+        <input type="email" id="email" placeholder="you@example.com" required />
+      </div>
 
       <button id="enableBtn" disabled>Sign Up & Enable Notifications</button>
     </div>
 
     <div id="success" class="success">
       <h2>You're In! 🎉</h2>
+      <p>Hi <span id="name-display"></span>,</p>
       <p>Daily notifications enabled for:</p>
       <p id="cat-display" style="font-weight:600; font-size:1.3rem; color:#6366f1;"></p>
       <p>Sample message: <span id="sample-msg"></span></p>
-      <p>Your first message arrives tomorrow!</p>
+      <p>Your first message arrives tomorrow morning!</p>
     </div>
 
     <div id="errorMsg" class="error"></div>
@@ -157,43 +188,73 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const cards = document.querySelectorAll('.option-card');
-      const enableBtn = document.getElementById('enableBtn');
-      const successDiv = document.getElementById('success');
-      const catDisplay = document.getElementById('cat-display');
+      const cards         = document.querySelectorAll('.option-card');
+      const enableBtn     = document.getElementById('enableBtn');
+      const successDiv    = document.getElementById('success');
+      const nameDisplay   = document.getElementById('name-display');
+      const catDisplay    = document.getElementById('cat-display');
       const sampleDisplay = document.getElementById('sample-msg');
-      const errorMsg = document.getElementById('errorMsg');
-      const emailInput = document.getElementById('email');
+      const errorMsg      = document.getElementById('errorMsg');
+      const nameInput     = document.getElementById('name');
+      const emailInput    = document.getElementById('email');
+
       let selectedCategory = null;
 
-      // Highlight selected category and enable button
+      // Check if form is valid → enable/disable button
+      function checkFormValid() {
+        const nameVal  = nameInput.value.trim();
+        const emailVal = emailInput.value.trim();
+        const hasName  = nameVal.length >= 2;
+        const hasEmail = emailVal.length > 5 && emailVal.includes('@') && emailVal.includes('.');
+        
+        enableBtn.disabled = !(selectedCategory && hasName && hasEmail);
+        
+        if (enableBtn.disabled) {
+          enableBtn.textContent = "Sign Up & Enable Notifications";
+        } else {
+          enableBtn.textContent = `Join as ${nameVal} → ${selectedCategory.replace(/ boost$/, '')}`;
+        }
+      }
+
+      // Category selection
       cards.forEach(card => {
         card.addEventListener('click', () => {
           cards.forEach(c => c.classList.remove('selected'));
           card.classList.add('selected');
           selectedCategory = card.dataset.category;
-          enableBtn.disabled = false;
-          enableBtn.textContent = `Sign Up & Enable for ${card.querySelector('.option-title').textContent}`;
+          checkFormValid();
           errorMsg.textContent = '';
         });
       });
 
+      // Input changes → re-validate
+      nameInput.addEventListener('input', checkFormValid);
+      emailInput.addEventListener('input', checkFormValid);
+
       enableBtn.addEventListener('click', async () => {
+        const name  = nameInput.value.trim();
+        const email = emailInput.value.trim();
+
         if (!selectedCategory) {
-          errorMsg.textContent = "Please select a motivation category first.";
+          errorMsg.textContent = "Please choose a motivation category.";
           return;
         }
-
-        const email = emailInput.value.trim();
+        if (name.length < 2) {
+          errorMsg.textContent = "Please enter your first name (at least 2 characters).";
+          return;
+        }
+        if (!email || !email.includes('@') || !email.includes('.')) {
+          errorMsg.textContent = "Please enter a valid email address.";
+          return;
+        }
 
         enableBtn.disabled = true;
         enableBtn.textContent = "Processing...";
         errorMsg.textContent = '';
 
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          errorMsg.textContent = "Push notifications not supported in this browser.";
-          enableBtn.disabled = false;
-          enableBtn.textContent = "Sign Up & Enable Notifications";
+          errorMsg.textContent = "Push notifications are not supported in this browser.";
+          resetButton();
           return;
         }
 
@@ -202,9 +263,8 @@
           const permission = await Notification.requestPermission();
 
           if (permission !== 'granted') {
-            errorMsg.textContent = "Notification permission denied. You can enable it in browser settings.";
-            enableBtn.disabled = false;
-            enableBtn.textContent = "Sign Up & Enable Notifications";
+            errorMsg.textContent = "Notification permission denied. Please allow it in your browser settings.";
+            resetButton();
             return;
           }
 
@@ -219,7 +279,8 @@
             body: JSON.stringify({
               subscription: subscription.toJSON(),
               category: selectedCategory,
-              email: email || null
+              name: name,
+              email: email
             })
           });
 
@@ -231,21 +292,26 @@
               "healthy eating motivation": "Your body thrives on good fuel..."
             };
 
-            catDisplay.textContent = selectedCategory;
+            nameDisplay.textContent  = name;
+            catDisplay.textContent   = selectedCategory;
             sampleDisplay.textContent = samples[selectedCategory];
             successDiv.style.display = 'block';
-            enableBtn.textContent = "Notifications Enabled!";
+            enableBtn.textContent    = "Notifications Enabled! 🎉";
           } else {
-            errorMsg.textContent = "Subscription failed on server. Try again.";
-            enableBtn.disabled = false;
-            enableBtn.textContent = "Sign Up & Enable Notifications";
+            const errData = await response.json().catch(() => ({}));
+            errorMsg.textContent = errData.error || "Subscription failed. Please try again.";
+            resetButton();
           }
         } catch (err) {
           errorMsg.textContent = "Error: " + err.message;
-          enableBtn.disabled = false;
-          enableBtn.textContent = "Sign Up & Enable Notifications";
+          resetButton();
         }
       });
+
+      function resetButton() {
+        enableBtn.disabled = false;
+        enableBtn.textContent = "Sign Up & Enable Notifications";
+      }
 
       function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -257,6 +323,9 @@
         }
         return outputArray;
       }
+
+      // Initial check
+      checkFormValid();
     });
   </script>
 </body>
