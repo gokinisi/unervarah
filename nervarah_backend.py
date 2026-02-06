@@ -12,6 +12,7 @@ import os
 DB_PATH = os.getenv('DB_PATH', '/app/data/subscriptions.db')  # fallback for local
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 
+
 # Database setup
 conn = sqlite3.connect('subscriptions.db', check_same_thread=False)
 c = conn.cursor()
@@ -88,6 +89,18 @@ def serve_sw():
     return send_from_directory('.', 'sw.js')
 
 # Subscribe endpoint
+# In /subscribe
+try:
+    # your existing code
+except Exception as e:
+    print(f"Subscribe error: {str(e)}", file=sys.stderr)  # shows in Render logs
+    return jsonify({"error": "Server error - check logs"}), 500
+  @app.route('/health')
+def health():
+    return "OK - app running", 200
+
+# At top of file
+import sys
 @app.route('/subscribe', methods=['POST'])
 def subscribe():
     data = request.json
