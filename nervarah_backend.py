@@ -4,7 +4,7 @@ import json
 from pywebpush import webpush, WebPushException
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
-import random
+import random 
 
 app = Flask(__name__, static_folder='.', static_url_path='')  # Serve files from current folder
 
