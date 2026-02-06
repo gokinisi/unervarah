@@ -134,6 +134,9 @@
     </div>
 
     <div class="form-actions">
+      <label for="email">Email address (optional)</label>
+      <input type="email" id="email" placeholder="you@example.com" />
+
       <button id="enableBtn" disabled>Sign Up & Enable Notifications</button>
     </div>
 
@@ -153,103 +156,108 @@
   </div>
 
   <script>
-    const cards = document.querySelectorAll('.option-card');
-    const enableBtn = document.getElementById('enableBtn');
-    const successDiv = document.getElementById('success');
-    const catDisplay = document.getElementById('cat-display');
-    const sampleDisplay = document.getElementById('sample-msg');
-    const errorMsg = document.getElementById('errorMsg');
+    document.addEventListener('DOMContentLoaded', () => {
+      const cards = document.querySelectorAll('.option-card');
+      const enableBtn = document.getElementById('enableBtn');
+      const successDiv = document.getElementById('success');
+      const catDisplay = document.getElementById('cat-display');
+      const sampleDisplay = document.getElementById('sample-msg');
+      const errorMsg = document.getElementById('errorMsg');
+      const emailInput = document.getElementById('email');
+      let selectedCategory = null;
 
-    let selectedCategory = null;
-
-    // Enable button only after category is selected
-    cards.forEach(card => {
-      card.addEventListener('click', () => {
-        cards.forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        selectedCategory = card.dataset.category;
-        enableBtn.disabled = false;
-        enableBtn.textContent = `Sign Up & Enable for ${card.querySelector('.option-title').textContent}`;
-        errorMsg.textContent = '';
+      // Highlight selected category and enable button
+      cards.forEach(card => {
+        card.addEventListener('click', () => {
+          cards.forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedCategory = card.dataset.category;
+          enableBtn.disabled = false;
+          enableBtn.textContent = `Sign Up & Enable for ${card.querySelector('.option-title').textContent}`;
+          errorMsg.textContent = '';
+        });
       });
-    });
 
-    enableBtn.addEventListener('click', async () => {
-      if (!selectedCategory) {
-        errorMsg.textContent = "Please select a motivation category first.";
-        return;
-      }
+      enableBtn.addEventListener('click', async () => {
+        if (!selectedCategory) {
+          errorMsg.textContent = "Please select a motivation category first.";
+          return;
+        }
 
-      enableBtn.disabled = true;
-      enableBtn.textContent = "Processing...";
+        const email = emailInput.value.trim();
 
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        errorMsg.textContent = "Push notifications not supported in this browser.";
-        enableBtn.disabled = false;
-        enableBtn.textContent = "Sign Up & Enable Notifications";
-        return;
-      }
+        enableBtn.disabled = true;
+        enableBtn.textContent = "Processing...";
+        errorMsg.textContent = '';
 
-      try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        const permission = await Notification.requestPermission();
-
-        if (permission !== 'granted') {
-          errorMsg.textContent = "Notification permission denied. You can enable it in browser settings.";
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          errorMsg.textContent = "Push notifications not supported in this browser.";
           enableBtn.disabled = false;
           enableBtn.textContent = "Sign Up & Enable Notifications";
           return;
         }
 
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array('BFH2VW6P1cUBmZCIsb7Vgn5lWbUWo6l_2F_vz2_9ZEdPI5XPCSuSblCylqFU9IRaNj1jgGh15KvWV30Q9ck3XpA')
-        });
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js');
+          const permission = await Notification.requestPermission();
 
-        const response = await fetch('http://nervarah.com', 
+          if (permission !== 'granted') {
+            errorMsg.textContent = "Notification permission denied. You can enable it in browser settings.";
+            enableBtn.disabled = false;
+            enableBtn.textContent = "Sign Up & Enable Notifications";
+            return;
+          }
 
-await fetch('https://unervarah.onrender.com/subscribe', { ... })
-await navigator.serviceWorker.register('https://unervarah.onrender.com/sw.js');
-{method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subscription: subscription.toJSON(),
-            category: selectedCategory
-          })
-        });
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array('BA7mpoEQJEKRvhw2-9XUXWgI4fiYeqyKAh5x1wTv_6HeFW7oeLNyP3IOAgzD1Ka8bTOZodZlXafMStclk0mHMM0')
+          });
 
-        if (response.ok) {
-          const samples = {
-            "positive mindset": "You already have the power to turn today around...",
-            "exercise boost": "Your body is ready — do 5 squats...",
-            "healthy relationship": "Love grows in small moments...",
-            "healthy eating motivation": "Your body thrives on good fuel..."
-          };
+          const response = await fetch('https://unervarah.onrender.com/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscription: subscription.toJSON(),
+              category: selectedCategory,
+              email: email || null
+            })
+          });
 
-          catDisplay.textContent = selectedCategory;
-          sampleDisplay.textContent = samples[selectedCategory];
-          successDiv.style.display = 'block';
-          enableBtn.textContent = "Notifications Enabled!";
-        } else {
-          errorMsg.textContent = "Subscription failed. Try again.";
+          if (response.ok) {
+            const samples = {
+              "positive mindset": "You already have the power to turn today around...",
+              "exercise boost": "Your body is ready — do 5 squats...",
+              "healthy relationship": "Love grows in small moments...",
+              "healthy eating motivation": "Your body thrives on good fuel..."
+            };
+
+            catDisplay.textContent = selectedCategory;
+            sampleDisplay.textContent = samples[selectedCategory];
+            successDiv.style.display = 'block';
+            enableBtn.textContent = "Notifications Enabled!";
+          } else {
+            errorMsg.textContent = "Subscription failed on server. Try again.";
+            enableBtn.disabled = false;
+            enableBtn.textContent = "Sign Up & Enable Notifications";
+          }
+        } catch (err) {
+          errorMsg.textContent = "Error: " + err.message;
           enableBtn.disabled = false;
           enableBtn.textContent = "Sign Up & Enable Notifications";
         }
-      } catch (err) {
-        errorMsg.textContent = "Error: " + err.message;
-        enableBtn.disabled = false;
-        enableBtn.textContent = "Sign Up & Enable Notifications";
+      });
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
       }
     });
-
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-      return outputArray;
-    }
- </script>
+  </script>
+</body>
+</html>
