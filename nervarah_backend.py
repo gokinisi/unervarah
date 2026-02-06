@@ -34,54 +34,42 @@ VAPID_PUBLIC_KEY = "BA7mpoEQJEKRvhw2-9XUXWgI4fiYeqyKAh5x1wTv_6HeFW7oeLNyP3IOAgzD
 VAPID_PRIVATE_KEY = "fYq8-glCtPhKFc9NNfwYQiCF9F0CMlHz9yYpISSkI04"  # ← Your real private key
 VAPID_CLAIMS = {"sub": "mailto:kris@nervarah.com"}
 
-def get_motivation(category):
-    messages = {
-        "positive mindset": [
-            "You already have the power to turn today around — take one kind act toward yourself right now (e.g., a hug, 10 min journaling, glass of water). I am worthy of my own love and care.",
-            "You are not behind — you're exactly where the next breakthrough begins. Take one small step today. I am ready for what’s next.",
-            "Your energy is magnetic when you honor it. Breathe deeply for 60 seconds. I am calm, centered, and in control."
-        ],
-        "exercise boost": [
-            "Your body is ready — do 5 squats or a 30-second stretch right now. I am strong and getting stronger every day.",
-            "One rep closer to the version of you that never quits. Start now. I am consistent and powerful.",
-            "Feel the power in your movement — stand up and shake it out for 20 seconds. I am alive and full of energy."
-        ],
-        "healthy relationship": [
-            "Love grows in small, kind moments — send one thoughtful message today. I give and receive love freely.",
-            "You deserve healthy, respectful connection — speak your truth calmly today. I am worthy of real love.",
-            "A strong relationship starts with self-love — do one act of kindness for yourself. I am enough."
-        ],
-        "healthy eating motivation": [
-            "Your body thrives on good fuel — drink a full glass of water or eat one vegetable right now. I nourish myself with love.",
-            "Every healthy choice is a vote for the future you — pick one nutritious snack today. I am healthy and energized.",
-            "You deserve food that makes you feel alive — prepare one balanced meal today. I am worthy of vibrant health."
-        ]
-    }
-    return random.choice(messages.get(category, messages["positive mindset"]))
+# Sample messages (fallback if ML is removed)
+MESSAGES = {
+    "positive mindset": [
+        "You already have the power to turn today around — take one kind act toward yourself right now. I am worthy of my own love and care.",
+        "You are not behind — you're exactly where the next breakthrough begins. I am ready for what’s next."
+    ],
+    "exercise boost": [
+        "Your body is ready — do 5 squats or a 30-second stretch right now. I am strong and getting stronger every day.",
+        "One rep closer to the version of you that never quits. I am consistent and powerful."
+    ],
+    "healthy relationship": [
+        "Love grows in small, kind moments — send one thoughtful message today. I give and receive love freely.",
+        "You deserve healthy, respectful connection. I am worthy of real love."
+    ],
+    "healthy eating motivation": [
+        "Your body thrives on good fuel — drink a full glass of water or eat one vegetable right now. I nourish myself with love.",
+        "Every healthy choice is a vote for the future you. I am healthy and energized."
+    ]
+}
 
-message = random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))
-    )
-message = random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))    message = ''.join(c for c in message if c.isprintable())
-    return message[:160] or "You are enough, right now. I am worthy of love."
+def get_motivation(category):
+    return random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))
 
 def clean_uplifting_message(message):
     message = message.strip()
-    # Remove junk at start/end
     junk_patterns = ['---', '–––', '…', '�', '\n', '\r', '  ']
     for junk in junk_patterns:
         message = message.replace(junk, ' ')
-    # Remove negative starters
     negative_starters = ["don't", "stop", "never", "can't", "but", "however", "no", "not"]
     words = message.split()
     if words and words[0].lower() in negative_starters:
         message = ' '.join(words[1:]).strip()
-    # Force positive ending
-    if not message.endswith(('.', '!', '?', ')')):
+    if not message.endswith(('.', '!', '?')):
         message += "!"
-    # Add affirmation if missing
     if "I am" not in message and random.random() < 0.5:
         message += " I am worthy of joy and growth."
-    # Final cleanup
     message = ' '.join(message.split())
     return message[:160] or "You are enough, right now. I am worthy of love."
 
@@ -130,7 +118,7 @@ def subscribe():
         print(f"Database error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Test push
+# Test push endpoint
 @app.route('/send-test')
 def send_test():
     c.execute("SELECT endpoint, auth, p256dh, category FROM subscriptions")
@@ -139,7 +127,8 @@ def send_test():
         return "No subscribers yet"
     sent_count = 0
     for endpoint, auth, p256dh, category in subs:
-message = random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))        message = clean_uplifting_message(message)
+        message = get_motivation(category)
+        message = clean_uplifting_message(message)
         data = json.dumps({
             "title": "Nervarah Daily Motivation",
             "body": message
@@ -170,7 +159,8 @@ def send_daily_motivations():
         return
     print(f"Starting daily send to {len(subs)} subscribers at {datetime.now()}")
     for endpoint, auth, p256dh, category in subs:
-message = random.choice(MESSAGES.get(category, MESSAGES["positive mindset"]))        message = clean_uplifting_message(message)
+        message = get_motivation(category)
+        message = clean_uplifting_message(message)
         data = json.dumps({
             "title": "Nervarah Daily Motivation",
             "body": message

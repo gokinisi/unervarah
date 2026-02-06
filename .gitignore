@@ -1,4 +1,5 @@
-.DS_Store
+ *.txt
+!requirements.txt   # ← add this line to un-ignore requirements.txt.DS_Store
 .localized
 *.db
 subscriptions.db
