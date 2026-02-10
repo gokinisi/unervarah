@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title> ---> Nervarah – Daily Motivation</title>
+  <title>Nervarah – Daily Motivation</title>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -39,7 +39,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 1.2rem;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
     .option-card {
       background: #ffffff;
@@ -65,30 +65,21 @@
       color: #6366f1;
       margin-bottom: 0.5rem;
     }
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
+    .consent-label {
+      font-size: 0.95rem;
       color: #475569;
+      margin: 1.5rem 0;
+      line-height: 1.5;
     }
-    input {
-      width: 100%;
-      padding: 0.9rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 1rem;
-      box-sizing: border-box;
+    .consent-label a {
+      color: #6366f1;
+      text-decoration: underline;
     }
-    input:focus {
-      outline: none;
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    .consent-label input {
+      margin-right: 0.5rem;
     }
     .form-actions {
-      margin-top: 2rem;
+      margin-top: 1rem;
     }
     button {
       background: #6366f1;
@@ -122,20 +113,27 @@
       color: #dc2626;
       text-align: center;
       margin-top: 1rem;
-      min-height: 1.2rem;
     }
     .footer {
       text-align: center;
       color: #94a3b8;
-      margin-top: 2rem;
+      margin-top: 2.5rem;
       font-size: 0.9rem;
+    }
+    .footer a {
+      color: #64748b;
+      text-decoration: none;
+      margin: 0 0.5rem;
+    }
+    .footer a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>✨ Nervarah</h1>
-    <p class="subtitle">Choose your focus • Get daily motivation</p>
+    <p class="subtitle">Choose your daily motivation and enable notifications</p>
 
     <div class="options-grid">
       <div class="option-card" data-category="positive mindset">
@@ -156,177 +154,148 @@
       </div>
     </div>
 
+    <!-- Consent Checkbox - REQUIRED before enabling button -->
+    <label class="consent-label">
+      <input type="checkbox" id="consentCheckbox" required>
+      I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> 
+      and consent to receive recurring daily motivational push notifications from Nervarah 
+      in my browser (you can manage or revoke permission anytime via browser settings). 
+      Your privacy is protected — see our <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
+    </label>
+
     <div class="form-actions">
-      <div class="form-group">
-        <label for="name">First Name <span style="color:#dc2626;">*</span></label>
-        <input type="text" id="name" placeholder="Alex" required />
-      </div>
-
-      <div class="form-group">
-        <label for="email">Email address <span style="color:#dc2626;">*</span></label>
-        <input type="email" id="email" placeholder="you@example.com" required />
-      </div>
-
       <button id="enableBtn" disabled>Sign Up & Enable Notifications</button>
     </div>
 
     <div id="success" class="success">
       <h2>You're In! 🎉</h2>
-      <p>Hi <span id="name-display"></span>,</p>
       <p>Daily notifications enabled for:</p>
       <p id="cat-display" style="font-weight:600; font-size:1.3rem; color:#6366f1;"></p>
       <p>Sample message: <span id="sample-msg"></span></p>
-      <p>Your first message arrives tomorrow morning!</p>
+      <p>Your first message arrives tomorrow!</p>
     </div>
 
     <div id="errorMsg" class="error"></div>
 
     <div class="footer">
-      Your privacy is protected • Unsubscribe anytime
+      <a href="/terms.html">Terms of Service</a> |
+      <a href="/privacy.html">Privacy Policy</a> |
+      <a href="/contact.html">Contact</a>
     </div>
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const cards         = document.querySelectorAll('.option-card');
-      const enableBtn     = document.getElementById('enableBtn');
-      const successDiv    = document.getElementById('success');
-      const nameDisplay   = document.getElementById('name-display');
-      const catDisplay    = document.getElementById('cat-display');
-      const sampleDisplay = document.getElementById('sample-msg');
-      const errorMsg      = document.getElementById('errorMsg');
-      const nameInput     = document.getElementById('name');
-      const emailInput    = document.getElementById('email');
+    const cards = document.querySelectorAll('.option-card');
+    const enableBtn = document.getElementById('enableBtn');
+    const consentCheckbox = document.getElementById('consentCheckbox');
+    const successDiv = document.getElementById('success');
+    const catDisplay = document.getElementById('cat-display');
+    const sampleDisplay = document.getElementById('sample-msg');
+    const errorMsg = document.getElementById('errorMsg');
+    let selectedCategory = null;
 
-      let selectedCategory = null;
+    // Enable button only when BOTH category selected AND consent checked
+    function updateButtonState() {
+      enableBtn.disabled = !(selectedCategory && consentCheckbox.checked);
+      if (!enableBtn.disabled) {
+        enableBtn.textContent = `Sign Up & Enable for ${cards.find(c => c.classList.contains('selected')).querySelector('.option-title').textContent}`;
+      } else {
+        enableBtn.textContent = "Sign Up & Enable Notifications";
+      }
+    }
 
-      // Check if form is valid → enable/disable button
-      function checkFormValid() {
-        const nameVal  = nameInput.value.trim();
-        const emailVal = emailInput.value.trim();
-        const hasName  = nameVal.length >= 2;
-        const hasEmail = emailVal.length > 5 && emailVal.includes('@') && emailVal.includes('.');
-        
-        enableBtn.disabled = !(selectedCategory && hasName && hasEmail);
-        
-        if (enableBtn.disabled) {
-          enableBtn.textContent = "Sign Up & Enable Notifications";
-        } else {
-          enableBtn.textContent = `Join as ${nameVal} → ${selectedCategory.replace(/ boost$/, '')}`;
-        }
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedCategory = card.dataset.category;
+        updateButtonState();
+        errorMsg.textContent = '';
+      });
+    });
+
+    consentCheckbox.addEventListener('change', updateButtonState);
+
+    enableBtn.addEventListener('click', async () => {
+      if (!selectedCategory) {
+        errorMsg.textContent = "Please select a motivation category first.";
+        return;
+      }
+      if (!consentCheckbox.checked) {
+        errorMsg.textContent = "You must agree to the Terms of Service to continue.";
+        return;
       }
 
-      // Category selection
-      cards.forEach(card => {
-        card.addEventListener('click', () => {
-          cards.forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          selectedCategory = card.dataset.category;
-          checkFormValid();
-          errorMsg.textContent = '';
+      enableBtn.disabled = true;
+      enableBtn.textContent = "Processing...";
+
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        errorMsg.textContent = "Push notifications not supported in this browser.";
+        enableBtn.disabled = false;
+        enableBtn.textContent = "Sign Up & Enable Notifications";
+        return;
+      }
+
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        // Note: You have a line trying to register from unervarah.onrender.com — consider consolidating to one SW
+        // const registration = await navigator.serviceWorker.register('https://unervarah.onrender.com/sw.js');
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          errorMsg.textContent = "Notification permission denied. You can enable it in browser settings.";
+          enableBtn.disabled = false;
+          enableBtn.textContent = "Sign Up & Enable Notifications";
+          return;
+        }
+
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array('BFH2VW6P1cUBmZCIsb7Vgn5lWbUWo6l_2F_vz2_9ZEdPI5XPCSuSblCylqFU9IRaNj1jgGh15KvWV30Q9ck3XpA')
         });
-      });
 
-      // Input changes → re-validate
-      nameInput.addEventListener('input', checkFormValid);
-      emailInput.addEventListener('input', checkFormValid);
+        const response = await fetch('https://unervarah.onrender.com/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: subscription.toJSON(),
+            category: selectedCategory
+          })
+        });
 
-      enableBtn.addEventListener('click', async () => {
-        const name  = nameInput.value.trim();
-        const email = emailInput.value.trim();
-
-        if (!selectedCategory) {
-          errorMsg.textContent = "Please choose a motivation category.";
-          return;
+        if (response.ok) {
+          const samples = {
+            "positive mindset": "You already have the power to turn today around...",
+            "exercise boost": "Your body is ready — do 5 squats...",
+            "healthy relationship": "Love grows in small moments...",
+            "healthy eating motivation": "Your body thrives on good fuel..."
+          };
+          catDisplay.textContent = selectedCategory;
+          sampleDisplay.textContent = samples[selectedCategory] || "Keep going — you've got this!";
+          successDiv.style.display = 'block';
+          enableBtn.textContent = "Notifications Enabled!";
+        } else {
+          errorMsg.textContent = "Subscription failed. Try again.";
+          enableBtn.disabled = false;
+          enableBtn.textContent = "Sign Up & Enable Notifications";
         }
-        if (name.length < 2) {
-          errorMsg.textContent = "Please enter your first name (at least 2 characters).";
-          return;
-        }
-        if (!email || !email.includes('@') || !email.includes('.')) {
-          errorMsg.textContent = "Please enter a valid email address.";
-          return;
-        }
-
-        enableBtn.disabled = true;
-        enableBtn.textContent = "Processing...";
-        errorMsg.textContent = '';
-
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          errorMsg.textContent = "Push notifications are not supported in this browser.";
-          resetButton();
-          return;
-        }
-
-        try {
-          const registration = await navigator.serviceWorker.register('/sw.js');
-          const permission = await Notification.requestPermission();
-
-          if (permission !== 'granted') {
-            errorMsg.textContent = "Notification permission denied. Please allow it in your browser settings.";
-            resetButton();
-            return;
-          }
-
-          const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array('BA7mpoEQJEKRvhw2-9XUXWgI4fiYeqyKAh5x1wTv_6HeFW7oeLNyP3IOAgzD1Ka8bTOZodZlXafMStclk0mHMM0')
-          });
-
-          const response = await fetch('https://unervarah.onrender.com/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              subscription: subscription.toJSON(),
-              category: selectedCategory,
-              name: name,
-              email: email
-            })
-          });
-
-          if (response.ok) {
-            const samples = {
-              "positive mindset": "You already have the power to turn today around...",
-              "exercise boost": "Your body is ready — do 5 squats...",
-              "healthy relationship": "Love grows in small moments...",
-              "healthy eating motivation": "Your body thrives on good fuel..."
-            };
-
-            nameDisplay.textContent  = name;
-            catDisplay.textContent   = selectedCategory;
-            sampleDisplay.textContent = samples[selectedCategory];
-            successDiv.style.display = 'block';
-            enableBtn.textContent    = "Notifications Enabled! 🎉";
-          } else {
-            const errData = await response.json().catch(() => ({}));
-            errorMsg.textContent = errData.error || "Subscription failed. Please try again.";
-            resetButton();
-          }
-        } catch (err) {
-          errorMsg.textContent = "Error: " + err.message;
-          resetButton();
-        }
-      });
-
-      function resetButton() {
+      } catch (err) {
+        errorMsg.textContent = "Error: " + err.message;
         enableBtn.disabled = false;
         enableBtn.textContent = "Sign Up & Enable Notifications";
       }
-
-      function urlBase64ToUint8Array(base64String) {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-          outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-      }
-
-      // Initial check
-      checkFormValid();
     });
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
   </script>
 </body>
 </html>
