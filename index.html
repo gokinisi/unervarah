@@ -60,10 +60,10 @@
       background: rgba(99,102,241,0.05);
     }
     .option-title {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       font-weight: 600;
       color: #6366f1;
-      margin-bottom: 0.5rem;
+      margin: 0;
     }
     .consent-label {
       font-size: 0.95rem;
@@ -104,15 +104,19 @@
     }
     .daily-task h2 {
       color: #10b981;
-      margin-bottom: 1rem;
+      margin-bottom: 1.2rem;
     }
-    .daily-task p {
-      font-size: 1.1rem;
+    .daily-task .instruction {
+      font-size: 1.15rem;
       line-height: 1.6;
       white-space: pre-wrap;
+      margin: 1.5rem 0;
+      padding: 1.2rem;
+      background: rgba(16, 185, 129, 0.1);
+      border-radius: 8px;
     }
     .change-category {
-      margin-top: 2rem;
+      margin-top: 2.5rem;
       text-align: center;
       font-size: 0.95rem;
       color: #64748b;
@@ -142,12 +146,8 @@
 </head>
 <body>
   <div class="container" id="mainContainer">
-    <!-- Content loaded dynamically via JS -->
+    <!-- Content loaded dynamically -->
   </div>
-
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
 
   <script>
     const reminders = {
@@ -158,28 +158,24 @@
     };
 
     const container = document.getElementById('mainContainer');
-    const today = new Date().toDateString(); // e.g. "Tue Feb 10 2026"
+    const today = new Date().toDateString();
 
     function showSelectionScreen(selected = null) {
       container.innerHTML = `
         <h1>✨ Nervarah</h1>
-        <p class="subtitle">Choose your daily reminder</p>
+        <p class="subtitle">Choose your daily focus</p>
         <div class="options-grid">
           <div class="option-card ${selected === 'positive mindset' ? 'selected' : ''}" data-category="positive mindset">
             <div class="option-title">Positive Mindset</div>
-            <p>2 min breathing & affirmation</p>
           </div>
           <div class="option-card ${selected === 'exercise boost' ? 'selected' : ''}" data-category="exercise boost">
             <div class="option-title">Exercise Boost</div>
-            <p>2 min max push-ups / squats</p>
           </div>
           <div class="option-card ${selected === 'healthy relationship' ? 'selected' : ''}" data-category="healthy relationship">
             <div class="option-title">Healthy Relationships</div>
-            <p>Quick loving message / call</p>
           </div>
           <div class="option-card ${selected === 'healthy eating motivation' ? 'selected' : ''}" data-category="healthy eating motivation">
             <div class="option-title">Healthy Eating</div>
-            <p>Eat greens first at lunch</p>
           </div>
         </div>
 
@@ -190,7 +186,7 @@
           See our <a href="/privacy.html" target="_blank">Privacy Policy</a>.
         </label>
 
-        <button id="enableBtn" disabled>Enable Daily Reminder</button>
+        <button id="enableBtn" disabled>Lock in Daily Reminder</button>
 
         <div id="errorMsg" class="error"></div>
 
@@ -201,7 +197,6 @@
         </div>
       `;
 
-      // Re-attach event listeners
       const cards = document.querySelectorAll('.option-card');
       const enableBtn = document.getElementById('enableBtn');
       const consentCheckbox = document.getElementById('consentCheckbox');
@@ -211,9 +206,9 @@
         enableBtn.disabled = !(selectedCategory && consentCheckbox.checked);
         if (!enableBtn.disabled && selectedCategory) {
           const title = Array.from(cards).find(c => c.dataset.category === selectedCategory)?.querySelector('.option-title')?.textContent || '';
-          enableBtn.textContent = `Enable ${title} Reminder`;
+          enableBtn.textContent = `Lock in ${title}`;
         } else {
-          enableBtn.textContent = "Enable Daily Reminder";
+          enableBtn.textContent = "Lock in Daily Reminder";
         }
       }
 
@@ -234,7 +229,7 @@
 
       enableBtn.addEventListener('click', () => {
         if (!selectedCategory) {
-          errorMsg.textContent = "Please select a reminder type.";
+          errorMsg.textContent = "Please select a focus.";
           return;
         }
         if (!consentCheckbox.checked) {
@@ -254,10 +249,11 @@
         <h1>Today's Reminder</h1>
         <div class="daily-task">
           <h2>${category.replace(/\b\w/g, l => l.toUpperCase())}</h2>
-          <p>${taskText}</p>
+          <p class="instruction">${taskText}</p>
         </div>
         <div class="change-category">
-          <a onclick="showSelectionScreen('${category}')">Change reminder type</a>
+          <p>You are currently focused on this goal.</p>
+          <a onclick="showSelectionScreen('${category}')">Change focus</a>
         </div>
         <div class="footer">
           <a href="/terms.html">Terms of Service</a> |
@@ -267,20 +263,21 @@
       `;
     }
 
-    // On load: decide what to show
+    // On page load
     const savedCategory = localStorage.getItem('nervarahCategory');
     const lastShown = localStorage.getItem('nervarahLastShown');
 
     if (savedCategory && lastShown !== today) {
-      // New day → show today's task (and update lastShown)
       localStorage.setItem('nervarahLastShown', today);
       showDailyTaskScreen(savedCategory);
     } else if (savedCategory) {
-      // Same day → show task again (or could show a "already seen today" message)
       showDailyTaskScreen(savedCategory);
     } else {
-      // First time → selection screen
       showSelectionScreen();
+    }
+  </script>
+</body>
+</html>
     }
   </script>
 </body>
