@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Nervarah – Daily Motivation</title>
+  <title>Nervarah – Daily Reminder</title>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -39,7 +39,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 1.2rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
     }
     .option-card {
       background: #ffffff;
@@ -75,12 +75,6 @@
       color: #6366f1;
       text-decoration: underline;
     }
-    .consent-label input {
-      margin-right: 0.5rem;
-    }
-    .form-actions {
-      margin-top: 1rem;
-    }
     button {
       background: #6366f1;
       color: white;
@@ -100,19 +94,33 @@
       background: #cbd5e1;
       cursor: not-allowed;
     }
-    .success {
+    .daily-task {
       background: #ecfdf5;
       border: 1px solid #10b981;
       border-radius: 12px;
-      padding: 1.5rem;
+      padding: 2rem;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .daily-task h2 {
+      color: #10b981;
+      margin-bottom: 1rem;
+    }
+    .daily-task p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .change-category {
       margin-top: 2rem;
       text-align: center;
-      display: none;
+      font-size: 0.95rem;
+      color: #64748b;
     }
-    .error {
-      color: #dc2626;
-      text-align: center;
-      margin-top: 1rem;
+    .change-category a {
+      color: #6366f1;
+      cursor: pointer;
+      text-decoration: underline;
     }
     .footer {
       text-align: center;
@@ -125,176 +133,150 @@
       text-decoration: none;
       margin: 0 0.5rem;
     }
-    .footer a:hover {
-      text-decoration: underline;
+    .error {
+      color: #dc2626;
+      text-align: center;
+      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>✨ Nervarah</h1>
-    <p class="subtitle">Choose your daily motivation and enable notifications</p>
-
-    <div class="options-grid">
-      <div class="option-card" data-category="positive mindset">
-        <div class="option-title">Positive Mindset</div>
-        <p>Build resilience and optimism</p>
-      </div>
-      <div class="option-card" data-category="exercise boost">
-        <div class="option-title">Exercise Boost</div>
-        <p>Stay consistent and energized</p>
-      </div>
-      <div class="option-card" data-category="healthy relationship">
-        <div class="option-title">Healthy Relationships</div>
-        <p>Nurture meaningful connections</p>
-      </div>
-      <div class="option-card" data-category="healthy eating motivation">
-        <div class="option-title">Healthy Eating</div>
-        <p>Fuel your body with intention</p>
-      </div>
-    </div>
-
-    <!-- Consent Checkbox - REQUIRED before enabling button -->
-    <label class="consent-label">
-      <input type="checkbox" id="consentCheckbox" required>
-      I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> 
-      and consent to receive recurring daily motivational push notifications from Nervarah 
-      in my browser (you can manage or revoke permission anytime via browser settings). 
-      Your privacy is protected — see our <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
-    </label>
-
-    <div class="form-actions">
-      <button id="enableBtn" disabled>Sign Up & Enable Notifications</button>
-    </div>
-
-    <div id="success" class="success">
-      <h2>You're In! 🎉</h2>
-      <p>Daily notifications enabled for:</p>
-      <p id="cat-display" style="font-weight:600; font-size:1.3rem; color:#6366f1;"></p>
-      <p>Sample message: <span id="sample-msg"></span></p>
-      <p>Your first message arrives tomorrow!</p>
-    </div>
-
-    <div id="errorMsg" class="error"></div>
-
-    <div class="footer">
-      <a href="/terms.html">Terms of Service</a> |
-      <a href="/privacy.html">Privacy Policy</a> |
-      <a href="/contact.html">Contact</a>
-    </div>
+  <div class="container" id="mainContainer">
+    <!-- Content loaded dynamically via JS -->
   </div>
 
   <script>
-    const cards = document.querySelectorAll('.option-card');
-    const enableBtn = document.getElementById('enableBtn');
-    const consentCheckbox = document.getElementById('consentCheckbox');
-    const successDiv = document.getElementById('success');
-    const catDisplay = document.getElementById('cat-display');
-    const sampleDisplay = document.getElementById('sample-msg');
-    const errorMsg = document.getElementById('errorMsg');
-    let selectedCategory = null;
+    const reminders = {
+      "positive mindset": "Set a timer for 2 minutes. Breathe deeply and repeat: I am capable, and I am ready for the duration of two minutes.",
+      "exercise boost": "Set a timer. Do as many push-ups or body weight squats as you can for 2 minutes.",
+      "healthy relationship": "Text or call a loved one today just to share that you are thinking of that person— small moments matter.",
+      "healthy eating motivation": "Today, eat some kind of lettuce greens before you eat anything else at lunch."
+    };
 
-    // Enable button only when BOTH category selected AND consent checked
-    function updateButtonState() {
-      enableBtn.disabled = !(selectedCategory && consentCheckbox.checked);
-      if (!enableBtn.disabled) {
-        enableBtn.textContent = `Sign Up & Enable for ${cards.find(c => c.classList.contains('selected')).querySelector('.option-title').textContent}`;
-      } else {
-        enableBtn.textContent = "Sign Up & Enable Notifications";
+    const container = document.getElementById('mainContainer');
+    const today = new Date().toDateString(); // e.g. "Tue Feb 10 2026"
+
+    function showSelectionScreen(selected = null) {
+      container.innerHTML = `
+        <h1>✨ Nervarah</h1>
+        <p class="subtitle">Choose your daily reminder</p>
+        <div class="options-grid">
+          <div class="option-card ${selected === 'positive mindset' ? 'selected' : ''}" data-category="positive mindset">
+            <div class="option-title">Positive Mindset</div>
+            <p>2 min breathing & affirmation</p>
+          </div>
+          <div class="option-card ${selected === 'exercise boost' ? 'selected' : ''}" data-category="exercise boost">
+            <div class="option-title">Exercise Boost</div>
+            <p>2 min max push-ups / squats</p>
+          </div>
+          <div class="option-card ${selected === 'healthy relationship' ? 'selected' : ''}" data-category="healthy relationship">
+            <div class="option-title">Healthy Relationships</div>
+            <p>Quick loving message / call</p>
+          </div>
+          <div class="option-card ${selected === 'healthy eating motivation' ? 'selected' : ''}" data-category="healthy eating motivation">
+            <div class="option-title">Healthy Eating</div>
+            <p>Eat greens first at lunch</p>
+          </div>
+        </div>
+
+        <label class="consent-label">
+          <input type="checkbox" id="consentCheckbox">
+          I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> 
+          and understand this will show one daily reminder task when I open the site.
+          See our <a href="/privacy.html" target="_blank">Privacy Policy</a>.
+        </label>
+
+        <button id="enableBtn" disabled>Enable Daily Reminder</button>
+
+        <div id="errorMsg" class="error"></div>
+
+        <div class="footer">
+          <a href="/terms.html">Terms of Service</a> |
+          <a href="/privacy.html">Privacy Policy</a> |
+          <a href="/contact.html">Contact</a>
+        </div>
+      `;
+
+      // Re-attach event listeners
+      const cards = document.querySelectorAll('.option-card');
+      const enableBtn = document.getElementById('enableBtn');
+      const consentCheckbox = document.getElementById('consentCheckbox');
+      const errorMsg = document.getElementById('errorMsg');
+
+      function updateButton() {
+        enableBtn.disabled = !(selectedCategory && consentCheckbox.checked);
+        if (!enableBtn.disabled && selectedCategory) {
+          const title = Array.from(cards).find(c => c.dataset.category === selectedCategory)?.querySelector('.option-title')?.textContent || '';
+          enableBtn.textContent = `Enable ${title} Reminder`;
+        } else {
+          enableBtn.textContent = "Enable Daily Reminder";
+        }
       }
-    }
 
-    cards.forEach(card => {
-      card.addEventListener('click', () => {
-        cards.forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        selectedCategory = card.dataset.category;
-        updateButtonState();
-        errorMsg.textContent = '';
+      let selectedCategory = selected;
+      if (selected) updateButton();
+
+      cards.forEach(card => {
+        card.addEventListener('click', () => {
+          cards.forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedCategory = card.dataset.category;
+          updateButton();
+          errorMsg.textContent = '';
+        });
       });
-    });
 
-    consentCheckbox.addEventListener('change', updateButtonState);
+      consentCheckbox.addEventListener('change', updateButton);
 
-    enableBtn.addEventListener('click', async () => {
-      if (!selectedCategory) {
-        errorMsg.textContent = "Please select a motivation category first.";
-        return;
-      }
-      if (!consentCheckbox.checked) {
-        errorMsg.textContent = "You must agree to the Terms of Service to continue.";
-        return;
-      }
-
-      enableBtn.disabled = true;
-      enableBtn.textContent = "Processing...";
-
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        errorMsg.textContent = "Push notifications not supported in this browser.";
-        enableBtn.disabled = false;
-        enableBtn.textContent = "Sign Up & Enable Notifications";
-        return;
-      }
-
-      try {
-        const registration = await navigator.serviceWorker.register('/sw.js');
-        // Note: You have a line trying to register from unervarah.onrender.com — consider consolidating to one SW
-        // const registration = await navigator.serviceWorker.register('https://unervarah.onrender.com/sw.js');
-
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          errorMsg.textContent = "Notification permission denied. You can enable it in browser settings.";
-          enableBtn.disabled = false;
-          enableBtn.textContent = "Sign Up & Enable Notifications";
+      enableBtn.addEventListener('click', () => {
+        if (!selectedCategory) {
+          errorMsg.textContent = "Please select a reminder type.";
+          return;
+        }
+        if (!consentCheckbox.checked) {
+          errorMsg.textContent = "Please agree to continue.";
           return;
         }
 
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array('BFH2VW6P1cUBmZCIsb7Vgn5lWbUWo6l_2F_vz2_9ZEdPI5XPCSuSblCylqFU9IRaNj1jgGh15KvWV30Q9ck3XpA')
-        });
+        localStorage.setItem('nervarahCategory', selectedCategory);
+        localStorage.setItem('nervarahLastShown', today);
+        showDailyTaskScreen(selectedCategory);
+      });
+    }
 
-        const response = await fetch('https://unervarah.onrender.com/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subscription: subscription.toJSON(),
-            category: selectedCategory
-          })
-        });
+    function showDailyTaskScreen(category) {
+      const taskText = reminders[category] || "No reminder set – please choose one.";
+      container.innerHTML = `
+        <h1>Today's Reminder</h1>
+        <div class="daily-task">
+          <h2>${category.replace(/\b\w/g, l => l.toUpperCase())}</h2>
+          <p>${taskText}</p>
+        </div>
+        <div class="change-category">
+          <a onclick="showSelectionScreen('${category}')">Change reminder type</a>
+        </div>
+        <div class="footer">
+          <a href="/terms.html">Terms of Service</a> |
+          <a href="/privacy.html">Privacy Policy</a> |
+          <a href="/contact.html">Contact</a>
+        </div>
+      `;
+    }
 
-        if (response.ok) {
-          const samples = {
-            "positive mindset": "You already have the power to turn today around...",
-            "exercise boost": "Your body is ready — do 5 squats...",
-            "healthy relationship": "Love grows in small moments...",
-            "healthy eating motivation": "Your body thrives on good fuel..."
-          };
-          catDisplay.textContent = selectedCategory;
-          sampleDisplay.textContent = samples[selectedCategory] || "Keep going — you've got this!";
-          successDiv.style.display = 'block';
-          enableBtn.textContent = "Notifications Enabled!";
-        } else {
-          errorMsg.textContent = "Subscription failed. Try again.";
-          enableBtn.disabled = false;
-          enableBtn.textContent = "Sign Up & Enable Notifications";
-        }
-      } catch (err) {
-        errorMsg.textContent = "Error: " + err.message;
-        enableBtn.disabled = false;
-        enableBtn.textContent = "Sign Up & Enable Notifications";
-      }
-    });
+    // On load: decide what to show
+    const savedCategory = localStorage.getItem('nervarahCategory');
+    const lastShown = localStorage.getItem('nervarahLastShown');
 
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-      return outputArray;
+    if (savedCategory && lastShown !== today) {
+      // New day → show today's task (and update lastShown)
+      localStorage.setItem('nervarahLastShown', today);
+      showDailyTaskScreen(savedCategory);
+    } else if (savedCategory) {
+      // Same day → show task again (or could show a "already seen today" message)
+      showDailyTaskScreen(savedCategory);
+    } else {
+      // First time → selection screen
+      showSelectionScreen();
     }
   </script>
 </body>
