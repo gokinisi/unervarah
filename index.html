@@ -178,6 +178,69 @@
             <div class="option-title">Healthy Eating</div>
           </div>
         </div>
+        function showMeetupsScreen(category) {
+  // Hardcoded example for Alabama A&M – expand later
+  const university = "Alabama A&M University"; // Could come from user profile later
+  const location = "University Commons Area / Quad (near Student Union & Wellness Center)";
+  const meetupDay = "Every Thursday";
+  const meetupTime = "5:30 PM – 6:00 PM";
+  const meetupNote = "Quick 30-min check-in: Share progress on your daily task, motivate each other, and plan next steps. Bring water/yoga mat if needed!";
+
+  // Example matches (anonymized)
+  const exampleMatches = [
+    { name: "AAMU Student (Exercise Boost)", note: "Regular attendee – let's crush those 2-min sets together!" },
+    { name: "AAMU Freshman (same goal)", note: "New to the group but committed – Huntsville/Normal area" }
+  ];
+
+  let matchesHtml = '<ul style="list-style:none; padding:0; margin:1rem 0;">';
+  exampleMatches.forEach(match => {
+    matchesHtml += `
+      <li style="margin:1rem 0; padding:1rem; background:#f0fdfa; border-radius:8px; border:1px solid #a7f3d0;">
+        <strong>${match.name}</strong><br>
+        <em>${match.note}</em>
+      </li>
+    `;
+  });
+  if (exampleMatches.length === 0) {
+    matchesHtml += '<p>No matches yet – be the first to join!</p>';
+  }
+  matchesHtml += '</ul>';
+
+  container.innerHTML = `
+    <h1>Weekly Meetup – ${university}</h1>
+    <p class="subtitle">Connect with others pursuing your goal</p>
+
+    <div style="background:#ecfdf5; padding:1.5rem; border-radius:12px; border:1px solid #10b981; margin:1.5rem 0;">
+      <h3 style="margin-top:0; color:#10b981;">Suggested Weekly Session</h3>
+      <p><strong>Location:</strong> ${location}</p>
+      <p><strong>When:</strong> ${meetupDay} at ${meetupTime}</p>
+      <p><strong>Details:</strong> ${meetupNote}</p>
+    </div>
+
+    <div>
+      <h3 style="color:#6366f1;">Potential Matches / Attendees</h3>
+      ${matchesHtml}
+    </div>
+
+    <p style="text-align:center; font-size:0.95rem; color:#64748b; margin:2rem 0;">
+      This is a student-led, informal meetup. Suggest changes or create your own event in future updates!
+    </p>
+
+    <button onclick="showDailyTaskScreen('${category}')" style="background:#6366f1; color:white; padding:1rem; border:none; border-radius:10px; font-weight:600; cursor:pointer; width:100%; margin-bottom:1rem;">
+      Back to Today's Reminder
+    </button>
+
+    <div class="change-category">
+      <a onclick="showSelectionScreen('${category}')">Change focus</a>
+    </div>
+
+    <div class="footer">
+      <a href="/terms.html">Terms of Service</a> |
+      <a href="/privacy.html">Privacy Policy</a> |
+      <a href="/contact.html">Contact</a>
+    </div>
+  `;
+}
 
         <label class="consent-label">
           <input type="checkbox" id="consentCheckbox">
