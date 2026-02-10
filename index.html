@@ -11,7 +11,7 @@
       margin: 0;
       padding: 2rem 1rem;
       min-height: 100vh;
-      display: flex;
+      display: flex; 
       justify-content: center;
       color: #1e293b;
     }
@@ -306,7 +306,10 @@
       });
     }
 
-    function showDailyTaskScreen(category) {
+    function showDailyTaskScreen(category) 
+    <button onclick="showMeetupsScreen('${category}')" style="background:#10b981; color:white; padding:1rem; border:none; border-radius:10px; font-weight:600; cursor:pointer; width:100%; margin-top:1.5rem;">
+  Plan / View Weekly Meetup
+</button>
       const taskText = reminders[category] || "No reminder set – please choose one.";
       container.innerHTML = `
         <h1>Today's Reminder</h1>
