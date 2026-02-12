@@ -145,6 +145,26 @@
   </style>
 </head>
 <body>
+  <label for="schoolInput">Select Your School</label>
+<input id="schoolInput" placeholder="Start typing..." autocomplete="off" />
+<div id="results" class="dropdown"></div>
+
+<style>
+.dropdown {
+  border: 1px solid #ddd;
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: 8px;
+}
+.dropdown div {
+  padding: 8px;
+  cursor: pointer;
+}
+.dropdown div:hover {
+  background: #f3f3f3;
+}
+</style>
+
   <div class="container" id="mainContainer">
     <!-- Content loaded dynamically -->
   </div>
