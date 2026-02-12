@@ -4,6 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Nervarah – Daily Reminder</title>
+
+  <!-- Firebase SDKs (paste your config below) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      // PASTE YOUR FULL CONFIG HERE (from Firebase console)
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.auth = auth;
+    window.db = db;
+  </script>
+
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -175,7 +200,7 @@
 <body>
   <div class="container" id="mainContainer"></div>
 
-  <script>
+  <script type="module">
     const reminders = {
       "positive mindset": "Set a timer for 2 minutes. Breathe deeply and repeat: I am capable, and I am ready for the duration of two minutes.",
       "exercise boost": "Set a timer. Do as many push-ups or body weight squats as you can for 2 minutes.",
@@ -183,7 +208,6 @@
       "healthy eating motivation": "Today, eat some kind of lettuce greens before you eat anything else at lunch."
     };
 
-    // University-specific meetup configs (expand as needed)
     const universityMeetups = {
       "Alabama A&M University": {
         location: "University Commons Area / Quad (near Student Union & Wellness Center entrance)",
@@ -191,596 +215,100 @@
         time: "5:30 PM – 6:00 PM",
         note: "Quick 30-min check-in: Share your daily task progress, motivate each other, and plan ahead. Bring water or a mat if your goal involves movement! Informal, student-led."
       },
-      "Indian River State College": {
-        location: "IRSC Commons / Student Union Area (near Mueller Campus or main quad)",
-        day: "Every Wednesday",
-        time: "4:00 PM – 4:30 PM",
-        note: "Short group session: Discuss progress on your focus, encourage one another. Meet near the student lounge or outdoor commons."
-      },
-      "Florida Atlantic University": {
-        location: "FAU Student Union Commons / Breezeway Area",
-        day: "Every Tuesday",
-        time: "6:00 PM – 6:30 PM",
-        note: "Casual meetup: Quick share-out on daily reminders and goal tips. Flexible indoor/outdoor spot."
-      }
-      // Add more as you expand the list
+      // Add more as needed
     };
+
+    const schools = [ /* your full list from before */ ];
 
     const container = document.getElementById('mainContainer');
     const today = new Date().toDateString();
 
-    // Full list of schools (from your spreadsheet - add as many as you want)
-    const schools = [
-      "Abilene Christian University", "Academy of Art University", "Adelphi University", "Aims Community College",
-      "Alabama A & M University", "Alabama State University", "Albany State University", "American InterContinental University System",
-      "American University", "Ana G. Mendez University", "Anderson University", "Angelo State University",
-      "Antelope Valley Community College District", "Appalachian State University", "Arapahoe Community College",
-      "Arkansas State University", "Arkansas Tech University", "Ashford University", "Auburn University",
-      "Auburn University at Montgomery", "Augusta University", "Aurora University", "Austin Peay State University",
-      "Baker College", "Ball State University", "Barnard College", "Baylor University",
-      "Bellevue College", "Bellevue University", "Belmont University", "Bemidji State University",
-      "Bentley University", "Berklee College of Music", "Beth Medrash Govoha", "Binghamton University",
-      "Biola University", "Bismarck State College", "Black Hills State University", "Boise State University",
-      "Boston College", "Boston University", "Bowie State University", "Bowling Green State University-Main Campus",
-      "Bradley University", "Brandeis University", "Brazosport College", "Bridgewater State University",
-      "Brown University", "Bryant & Stratton College-Online", "Bryant University", "Bucknell University",
-      "Butler University", "California Baptist University", "California Polytechnic State University-San Luis Obispo",
-      "California State Polytechnic University-Humboldt", "California State Polytechnic University-Pomona",
-      "California State University-Bakersfield", "California State University-Channel Islands",
-      "California State University-Chico", "California State University-Dominguez Hills",
-      "California State University-East Bay", "California State University-Fresno",
-      "California State University-Los Angeles", "California State University-Monterey Bay",
-      "California State University-Sacramento", "California State University-San Bernardino",
-      "California State University-San Marcos", "California State University-Stanislaus",
-      "Calvin University", "Cameron University", "Campbellsville University", "Capella University",
-      "Carnegie Mellon University", "Case Western Reserve University", "Cedarville University",
-      "Central Connecticut State University", "Central Methodist University", "Central Michigan University",
-      "Central Ohio Technical College", "Central Washington University", "Chamberlain University-Illinois",
-      "Chapman University", "Charleston Southern University", "Chemeketa Community College",
-      "Christopher Newport University", "Cincinnati State Technical and Community College",
-      "Clark Atlanta University", "Clark College", "Clark State College", "Clayton State University",
-      "Clemson University", "Cleveland State University", "Clover Park Technical College",
-      "Coastal Carolina University", "Colgate University", "College of Central Florida",
-      "College of Charleston", "College of Coastal Georgia", "College of Southern Idaho",
-      "College of Southern Nevada", "College of Staten Island CUNY", "College of the Holy Cross",
-      "College of the Mainland", "Colorado Christian University", "Colorado Mesa University",
-      "Colorado Mountain College", "Colorado School of Mines", "Colorado State University Global",
-      "Colorado State University Pueblo", "Colorado State University-Fort Collins",
-      "Colorado Technical University-Colorado Springs", "Columbia Basin College", "Columbia College",
-      "Columbia College Chicago", "Columbia Southern University", "Columbia University in the City of New York",
-      "Columbus State University", "Commonwealth University of Pennsylvania", "Community College of Denver",
-      "Concordia University-Nebraska", "Concordia University-Saint Paul", "Cornell University",
-      "Creighton University", "Culinary Institute of America", "CUNY Bernard M Baruch College",
-      "CUNY Brooklyn College", "CUNY City College", "CUNY Graduate School and University Center",
-      "CUNY Hunter College", "CUNY John Jay College of Criminal Justice", "CUNY Lehman College",
-      "CUNY Medgar Evers College", "CUNY New York City College of Technology", "CUNY Queens College",
-      "CUNY York College", "Cypress College", "Dakota State University", "Dalton State College",
-      "Dartmouth College", "Davenport University", "Daytona State College", "Del Mar College",
-      "Delaware State University", "Delaware Technical Community College-Terry", "DePaul University",
-      "DeVry University-Illinois", "Drexel University", "Duke University", "Duquesne University",
-      "East Carolina University", "East Stroudsburg University of Pennsylvania", "East Tennessee State University",
-      "East Texas A&M University", "Eastern Connecticut State University", "Eastern Florida State College",
-      "Eastern Illinois University", "Eastern Kentucky University", "Eastern Michigan University",
-      "Eastern New Mexico University-Main Campus", "Eastern Washington University", "ECPI University",
-      "Edmonds College", "Elmhurst University", "Elon University", "Embry-Riddle Aeronautical University-Daytona Beach",
-      "Embry-Riddle Aeronautical University-Prescott", "Embry-Riddle Aeronautical University-Worldwide",
-      "Emerson College", "Emory University", "Empire State University", "Endicott College",
-      "Ensign College", "Everett Community College", "Excelsior University", "Fairfield University",
-      "Fairleigh Dickinson University-Metropolitan Campus", "Fairmont State University", "Farmingdale State College",
-      "Fashion Institute of Technology", "Fayetteville State University", "Ferris State University",
-      "Fitchburg State University", "Florida Agricultural and Mechanical University", "Florida Atlantic University",
-      "Florida Gulf Coast University", "Florida Institute of Technology", "Florida SouthWestern State College",
-      "Florida State College at Jacksonville", "Foothill College", "Fordham University", "Fort Hays State University",
-      "Fort Lewis College", "Francis Marion University", "Franciscan University of Steubenville",
-      "Franklin University", "Front Range Community College", "Frostburg State University", "Full Sail University",
-      "Galen College of Nursing-Louisville", "GateWay Community College", "George Fox University",
-      "George Mason University", "George Washington University", "Georgetown University",
-      "Georgia College & State University", "Georgia Gwinnett College", "Georgia Highlands College",
-      "Georgia Institute of Technology-Main Campus", "Georgia Military College", "Georgia Southern University",
-      "Georgia Southwestern State University", "Georgia State University", "Glendale Community College",
-      "Gonzaga University", "Gordon State College", "Grambling State University", "Grand Valley State University",
-      "Grayson College", "Great Basin College", "Green River College", "Greenville Technical College",
-      "Gulf Coast State College", "Gurnick Academy of Medical Arts", "Hampton University", "Harding University",
-      "Harvard University", "Hawaii Pacific University", "Henry Ford College", "High Point University",
-      "Highline College", "Hillsborough Community College", "Hofstra University", "Hope College",
-      "Howard University", "Idaho State University", "Illinois Institute of Technology", "Illinois State University",
-      "Indian River State College", "Indiana State University", "Indiana University of Pennsylvania-Main Campus",
-      "Indiana University-Indianapolis", "Indiana University-South Bend", "Indiana University-Southeast",
-      "Indiana Wesleyan University-National & Global", "Inter American University of Puerto Rico-Bayamon",
-      "Iona University", "Iowa State University", "Ithaca College", "Jackson College", "Jackson State University",
-      "Jacksonville State University", "James A. Rhodes State College", "James Madison University",
-      "Johns Hopkins University", "Johnson & Wales University-Providence", "Kansas State University",
-      "Kean University", "Keiser University-Ft Lauderdale", "Kent State University at Kent",
-      "Kent State University at Stark", "Kutztown University of Pennsylvania", "Lake Washington Institute of Technology",
-      "Lake-Sumter State College", "Lamar University", "Lander University", "Laramie County Community College",
-      "Laredo College", "Lee University", "Lehigh University", "LeTourneau University", "Lewis University",
-      "Lewis-Clark State College", "Lindenwood University", "Lipscomb University", "Long Island University",
-      "Longwood University", "Lorain County Community College", "Los Angeles Film School",
-      "Louisiana State University-Alexandria", "Louisiana Tech University", "Loyola Marymount University",
-      "Loyola University Chicago", "Loyola University Maryland", "Loyola University New Orleans",
-      "Marion Technical College", "Marist College", "Marquette University", "Marshall University",
-      "Maryville University of Saint Louis", "Massachusetts Institute of Technology", "McMurry University",
-      "McNeese State University", "MCPHS University", "Mercer University", "Mercy University",
-      "Merrimack College", "Mesa Community College", "Metropolitan State University",
-      "Metropolitan State University of Denver", "Miami University-Oxford", "Michigan Technological University",
-      "Middle Georgia State University", "Middle Tennessee State University", "Midland College",
-      "Midwestern State University", "Miller-Motte College-Chattanooga", "Millersville University of Pennsylvania",
-      "Minnesota State University Moorhead", "Minnesota State University-Mankato", "MiraCosta College",
-      "Mississippi State University", "Missouri Baptist University", "Missouri Southern State University",
-      "Missouri State University-Springfield", "Missouri University of Science and Technology",
-      "Missouri Western State University", "Modesto Junior College", "Molloy University",
-      "Monmouth University", "Monroe University", "Montana State University", "Montana State University Billings",
-      "Montclair State University", "Morehead State University", "Morgan State University",
-      "Mt Hood Community College", "Murray State University", "National Louis University",
-      "National University", "Navarro College", "Nevada State University", "New Jersey City University",
-      "New Jersey Institute of Technology", "New Mexico State University-Main Campus",
-      "New York Institute of Technology", "New York University", "Nicholls State University",
-      "Nightingale College", "Norfolk State University", "North Carolina A & T State University",
-      "North Carolina Central University", "North Carolina State University at Raleigh",
-      "North Dakota State University-Main Campus", "North Seattle College", "Northeastern Illinois University",
-      "Northeastern State University", "Northeastern University", "Northern Arizona University",
-      "Northern Illinois University", "Northern Kentucky University", "Northern Michigan University",
-      "Northern State University", "Northland Pioneer College", "Northwest Florida State College",
-      "Northwest Missouri State University", "Northwestern Michigan College",
-      "Northwestern State University of Louisiana", "Northwestern University", "Nova Southeastern University",
-      "NUC University", "Oakland University", "Odessa College", "Ohio University-Main Campus",
-      "Oklahoma State University-Main Campus", "Oklahoma State University-Oklahoma City",
-      "Old Dominion University", "Olympic College", "Oral Roberts University", "Oregon Institute of Technology",
-      "Ozarks Technical Community College", "Pace University", "Palm Beach Atlantic University",
-      "Palm Beach State College", "Paradise Valley Community College", "Park University",
-      "Pasco-Hernando State College", "Pennsylvania College of Technology",
-      "Pennsylvania State University-Penn State Erie-Behrend College",
-      "Pennsylvania State University-Penn State Harrisburg", "Pennsylvania State University-World Campus",
-      "Pennsylvania Western University", "Pensacola State College", "Pepperdine University",
-      "Pierce College District", "Pikes Peak State College", "Pittsburg State University",
-      "Plymouth State University", "Point Loma Nazarene University", "Polk State College",
-      "Pontifical Catholic University of Puerto Rico-Ponce", "Portland State University",
-      "Post University", "Prairie View A & M University", "Pratt Institute-Main",
-      "Princeton University", "Providence College", "Pueblo Community College",
-      "Purdue University Fort Wayne", "Purdue University Northwest", "Quincy College",
-      "Quinnipiac University", "Radford University", "Ramapo College of New Jersey",
-      "Rasmussen University-Florida", "Rasmussen University-Minnesota", "Red Rocks Community College",
-      "Regent University", "Rensselaer Polytechnic Institute", "Rhode Island College",
-      "Rice University", "Rider University", "Rio Hondo College", "Rio Salado College",
-      "Robert Morris University", "Rochester Institute of Technology", "Roger Williams University",
-      "Rogers State University", "Rose State College", "Rowan University",
-      "Rutgers University-Camden", "Rutgers University-Newark", "Sacred Heart University",
-      "Saginaw Valley State University", "Saint Cloud State University",
-      "Saint Johns River State College", "Saint Joseph's University - Philadelphia",
-      "Saint Leo University", "Saint Louis Community College", "Saint Louis University",
-      "Saint Xavier University", "Salem State University", "Salisbury University",
-      "Sam Houston State University", "Samford University", "San Antonio College",
-      "San Diego Mesa College", "San Francisco State University", "San Jose State University",
-      "Santa Ana College", "Santa Clara University", "Santa Fe College", "Santa Monica College",
-      "Savannah College of Art and Design", "School of Visual Arts", "Schoolcraft Community College District",
-      "Seattle Central College", "Seattle University", "Seminole State College of Florida",
-      "Seton Hall University", "Shasta College", "Shepherd University",
-      "Shippensburg University of Pennsylvania", "Siena College", "Sinclair Community College",
-      "Skagit Valley College", "Skyline College", "Slippery Rock University of Pennsylvania",
-      "Snow College", "Solano Community College", "Sonoma State University",
-      "South College", "South Dakota State University", "South Seattle College",
-      "South Texas College", "South University-Savannah Online", "Southeast Missouri State University",
-      "Southeastern Louisiana University", "Southeastern Oklahoma State University",
-      "Southeastern University", "Southern Arkansas University Main Campus",
-      "Southern Connecticut State University", "Southern Illinois University Edwardsville",
-      "Southern Illinois University-Carbondale", "Southern Methodist University",
-      "Southern Oregon University", "Southern University and A & M College",
-      "Southern Utah University", "Southwest Minnesota State University",
-      "Southwestern Oklahoma State University", "Spelman College", "Spokane Community College",
-      "Spokane Falls Community College", "St Olaf College", "St Petersburg College",
-      "St. John's University-New York", "St. Joseph's University-New York", "St. Thomas University",
-      "Stanford University", "State College of Florida-Manatee-Sarasota",
-      "State University of New York at Cortland", "State University of New York at New Paltz",
-      "State University of New York at Oswego", "State University of New York at Plattsburgh",
-      "Stephen F Austin State University", "Stevens Institute of Technology",
-      "Stevenson University", "Stockton University", "Stony Brook University",
-      "Strayer University-Global Region", "SUNY Brockport", "SUNY Buffalo State University",
-      "Syracuse University", "Tacoma Community College", "Tallahassee State College",
-      "Tarleton State University", "Temple University", "Tennessee State University",
-      "Tennessee Technological University", "Texas A & M International University",
-      "Texas A & M University-Corpus Christi", "Texas A&M University-Kingsville",
-      "Texas A&M University-San Antonio", "Texas Christian University", "Texas Southern University",
-      "Texas Woman's University", "The College of New Jersey", "The New School",
-      "The University of Montana", "The University of Tampa", "The University of Tennessee-Chattanooga",
-      "The University of Tennessee-Martin", "The University of Texas at Dallas",
-      "The University of Texas at El Paso", "The University of Texas at Tyler",
-      "The University of Texas Rio Grande Valley", "Thomas Edison State University",
-      "Towson University", "Trinity Valley Community College", "Troy University",
-      "Truckee Meadows Community College", "Tufts University", "Tulane University of Louisiana",
-      "Tyler Junior College", "Unitek College", "Unity Environmental University",
-      "Universidad Ana G. Mendez-Gurabo Campus", "University at Albany", "University at Buffalo",
-      "University of Akron Main Campus", "University of Alabama at Birmingham",
-      "University of Alabama in Huntsville", "University of Alaska Anchorage",
-      "University of Alaska Fairbanks", "University of Arkansas", "University of Arkansas at Little Rock",
-      "University of Arkansas-Fort Smith", "University of California-Merced",
-      "University of California-Riverside", "University of California-Santa Barbara",
-      "University of California-Santa Cruz", "University of Central Arkansas",
-      "University of Central Missouri", "University of Central Oklahoma",
-      "University of Chicago", "University of Cincinnati-Blue Ash College",
-      "University of Cincinnati-Clermont College", "University of Colorado Colorado Springs",
-      "University of Colorado Denver/Anschutz Medical Campus", "University of Connecticut",
-      "University of Dayton", "University of Delaware", "University of Denver",
-      "University of Florida-Online", "University of Hawaii at Manoa",
-      "University of Houston-Clear Lake", "University of Houston-Downtown",
-      "University of Idaho", "University of Illinois Chicago", "University of Iowa",
-      "University of Kansas", "University of Kentucky", "University of Louisiana at Lafayette",
-      "University of Louisiana at Monroe", "University of Louisville", "University of Maine",
-      "University of Maryland-Baltimore County", "University of Massachusetts Global",
-      "University of Massachusetts-Amherst", "University of Massachusetts-Boston",
-      "University of Massachusetts-Dartmouth", "University of Massachusetts-Lowell",
-      "University of Memphis", "University of Miami", "University of Michigan-Dearborn",
-      "University of Michigan-Flint", "University of Minnesota-Duluth", "University of Mississippi",
-      "University of Missouri-Columbia", "University of Missouri-Kansas City",
-      "University of Missouri-St Louis", "University of Nebraska at Omaha",
-      "University of Nebraska-Lincoln", "University of Nevada-Las Vegas",
-      "University of Nevada-Reno", "University of New Hampshire-Main Campus",
-      "University of New Mexico-Main Campus", "University of New Orleans",
-      "University of North Alabama", "University of North Carolina at Chapel Hill",
-      "University of North Carolina at Charlotte", "University of North Carolina at Greensboro",
-      "University of North Carolina at Pembroke", "University of North Carolina Wilmington",
-      "University of North Dakota", "University of North Florida", "University of North Georgia",
-      "University of Northern Colorado", "University of Northern Iowa", "University of Notre Dame",
-      "University of Oklahoma-Norman Campus", "University of Oregon", "University of Pennsylvania",
-      "University of Pittsburgh-Pittsburgh Campus", "University of Puerto Rico-Mayaguez",
-      "University of Puerto Rico-Rio Piedras", "University of Rhode Island",
-      "University of Rochester", "University of San Diego", "University of San Francisco",
-      "University of South Alabama", "University of South Dakota", "University of Southern California",
-      "University of Southern Indiana", "University of Southern Maine", "University of Southern Mississippi",
-      "University of St Thomas", "University of the Cumberlands", "University of Toledo",
-      "University of Utah", "University of Vermont", "University of Virginia-Main Campus",
-      "University of Washington-Bothell Campus", "University of West Florida",
-      "University of West Georgia", "University of Wisconsin-Eau Claire",
-      "University of Wisconsin-Green Bay", "University of Wisconsin-La Crosse",
-      "University of Wisconsin-Milwaukee", "University of Wisconsin-Oshkosh",
-      "University of Wisconsin-Platteville", "University of Wisconsin-Stevens Point",
-      "University of Wisconsin-Stout", "University of Wisconsin-Whitewater",
-      "University of Wyoming", "Utah State University", "Utah Tech University",
-      "Valdosta State University", "Vanderbilt University", "Villanova University",
-      "Vincennes University", "Virginia Commonwealth University", "Virginia State University",
-      "Wake Forest University", "Walden University", "Washburn University"
-    ];
+    const auth = window.auth;
+    const db = window.db;
 
-    function showSelectionScreen(selected = null) {
-      container.innerHTML = `
-        <h1>✨ Nervarah</h1>
-        <p class="subtitle">Choose your daily focus</p>
-        <div class="options-grid">
-          <div class="option-card ${selected === 'positive mindset' ? 'selected' : ''}" data-category="positive mindset">
-            <div class="option-title">Positive Mindset</div>
-          </div>
-          <div class="option-card ${selected === 'exercise boost' ? 'selected' : ''}" data-category="exercise boost">
-            <div class="option-title">Exercise Boost</div>
-          </div>
-          <div class="option-card ${selected === 'healthy relationship' ? 'selected' : ''}" data-category="healthy relationship">
-            <div class="option-title">Healthy Relationships</div>
-          </div>
-          <div class="option-card ${selected === 'healthy eating motivation' ? 'selected' : ''}" data-category="healthy eating motivation">
-            <div class="option-title">Healthy Eating</div>
-          </div>
-        </div>
-
-        <label class="consent-label">
-          <input type="checkbox" id="consentCheckbox">
-          I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> 
-          and understand this will show one daily reminder task when I open the site.
-          See our <a href="/privacy.html" target="_blank">Privacy Policy</a>.
-        </label>
-
-        <button id="enableBtn" disabled>Lock in Daily Reminder</button>
-
-        <div id="errorMsg" class="error"></div>
-
-        <div class="footer">
-          <a href="/terms.html">Terms of Service</a> |
-          <a href="/privacy.html">Privacy Policy</a> |
-          <a href="/contact.html">Contact</a>
-        </div>
-      `;
-
-      const cards = document.querySelectorAll('.option-card');
-      const enableBtn = document.getElementById('enableBtn');
-      const consentCheckbox = document.getElementById('consentCheckbox');
-      const errorMsg = document.getElementById('errorMsg');
-
-      function updateButton() {
-        enableBtn.disabled = !(selectedCategory && consentCheckbox.checked);
-        if (!enableBtn.disabled && selectedCategory) {
-          const title = Array.from(cards).find(c => c.dataset.category === selectedCategory)?.querySelector('.option-title')?.textContent || '';
-          enableBtn.textContent = `Lock in ${title}`;
+    // Auth state listener
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        const profile = await loadProfile(user.uid);
+        if (profile) {
+          localStorage.setItem('nervarahCategory', profile.category);
+          localStorage.setItem('nervarahUniversity', profile.university);
+          showDailyTaskScreen(profile.category);
         } else {
-          enableBtn.textContent = "Lock in Daily Reminder";
+          showSelectionScreen();
         }
+      } else {
+        showSignupScreen(); // Start with signup/login
       }
+    });
 
-      let selectedCategory = selected;
-      if (selected) updateButton();
+    async function loadProfile(uid) {
+      const q = query(collection(db, "users"), where("uid", "==", uid));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        return snapshot.docs[0].data();
+      }
+      return null;
+    }
 
-      cards.forEach(card => {
-        card.addEventListener('click', () => {
-          cards.forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          selectedCategory = card.dataset.category;
-          updateButton();
-          errorMsg.textContent = '';
-        });
-      });
-
-      consentCheckbox.addEventListener('change', updateButton);
-
-      enableBtn.addEventListener('click', () => {
-        if (!selectedCategory) {
-          errorMsg.textContent = "Please select a focus.";
-          return;
-        }
-        if (!consentCheckbox.checked) {
-          errorMsg.textContent = "Please agree to continue.";
-          return;
-        }
-
-        localStorage.setItem('nervarahCategory', selectedCategory);
-        localStorage.setItem('nervarahLastShown', today);
-
-        // If no school saved yet, show school picker
-        if (!localStorage.getItem('nervarahUniversity')) {
-          showSchoolSelectionScreen(selectedCategory);
-        } else {
-          showDailyTaskScreen(selectedCategory);
-        }
+    async function saveProfile(uid, university, category) {
+      await addDoc(collection(db, "users"), {
+        uid,
+        university,
+        category,
+        createdAt: serverTimestamp()
       });
     }
 
-    function showSchoolSelectionScreen(category) {
+    function showSignupScreen() {
       container.innerHTML = `
-        <h1>Select Your School</h1>
-        <p class="subtitle">This helps connect you to weekly meetups</p>
-
-        <input type="text" id="schoolInput" placeholder="Start typing your school..." autocomplete="off" />
-
-        <div id="schoolResults" class="dropdown"></div>
-
-        <button id="saveSchoolBtn" disabled>Save & Continue to Reminder</button>
-
+        <h1>Sign Up</h1>
+        <input type="text" id="name" placeholder="Name (optional)" />
+        <input type="email" id="email" placeholder="school@email.edu" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button onclick="handleSignup()">Sign Up & Continue</button>
+        <p>Have account? <a onclick="showLoginScreen()">Login</a></p>
         <div id="errorMsg" class="error"></div>
-
-        <div class="footer">
-          <a href="/terms.html">Terms of Service</a> |
-          <a href="/privacy.html">Privacy Policy</a> |
-          <a href="/contact.html">Contact</a>
-        </div>
       `;
-
-      const input = document.getElementById('schoolInput');
-      const resultsDiv = document.getElementById('schoolResults');
-      const saveBtn = document.getElementById('saveSchoolBtn');
-      const errorMsg = document.getElementById('errorMsg');
-
-      input.addEventListener('input', () => {
-        const filter = input.value.toLowerCase().trim();
-        resultsDiv.innerHTML = '';
-        resultsDiv.style.display = 'none';
-
-        if (filter.length < 2) return;
-
-        const filtered = schools.filter(school => school.toLowerCase().includes(filter)).slice(0, 20); // limit results
-
-        if (filtered.length > 0) {
-          filtered.forEach(school => {
-            const item = document.createElement('div');
-            item.textContent = school;
-            item.addEventListener('click', () => {
-              input.value = school;
-              resultsDiv.style.display = 'none';
-              saveBtn.disabled = false;
-            });
-            resultsDiv.appendChild(item);
-          });
-          resultsDiv.style.display = 'block';
-        }
-      });
-
-      // Hide results when clicking outside
-      document.addEventListener('click', e => {
-        if (!input.contains(e.target) && !resultsDiv.contains(e.target)) {
-          resultsDiv.style.display = 'none';
-        }
-      });
-
-      saveBtn.addEventListener('click', () => {
-        const school = input.value.trim();
-        if (!school || !schools.includes(school)) {
-          errorMsg.textContent = "Please select a valid school from the list.";
-          return;
-        }
-        localStorage.setItem('nervarahUniversity', school);
-        showDailyTaskScreen(category);
-      });
     }
 
-    function showDailyTaskScreen(category) {
-      const taskText = reminders[category] || "No reminder set – please choose one.";
+    function showLoginScreen() {
       container.innerHTML = `
-        <h1>Today's Reminder</h1>
-        <div class="daily-task">
-          <h2>${category.replace(/\b\w/g, l => l.toUpperCase())}</h2>
-          <p class="instruction">${taskText}</p>
-        </div>
-        <div class="change-category">
-          <p>You are currently focused on this goal.</p>
-          <a onclick="showSelectionScreen('${category}')">Change focus</a>
-        </div>
-
-        <button onclick="showMeetupsScreen('${category}')" style="background:#10b981; color:white; padding:1rem; border:none; border-radius:10px; font-weight:600; cursor:pointer; width:100%; margin-top:1.5rem;">
-          Plan / View Weekly Meetup
-        </button>
-
-        <div class="footer">
-          <a href="/terms.html">Terms of Service</a> |
-          <a href="/privacy.html">Privacy Policy</a> |
-          <a href="/contact.html">Contact</a>
-        </div>
+        <h1>Login</h1>
+        <input type="email" id="email" placeholder="school@email.edu" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button onclick="handleLogin()">Login & Continue</button>
+        <p>New? <a onclick="showSignupScreen()">Sign Up</a></p>
+        <div id="errorMsg" class="error"></div>
       `;
     }
 
-    function showMeetupsScreen(category) {
-      const university = localStorage.getItem('nervarahUniversity') || "Your University";
-      const config = universityMeetups[university] || {
-        location: "Campus Commons / Quad Area",
-        day: "Every Thursday",
-        time: "5:30 PM – 6:00 PM",
-        note: "Quick 30-min check-in: Share progress, motivate each other. Student-led and informal."
-      };
-
-      const location = config.location;
-      const meetupDay = config.day;
-      const meetupTime = config.time;
-      const meetupNote = config.note;
-
-      // Demo matches – can be replaced with real Firestore later
-      const exampleMatches = [
-        { name: "Another student", note: `Also doing ${category} – weekly check-in crew!` },
-        { name: "Local student", note: "Same goal – let's stay consistent!" }
-      ];
-
-      let matchesHtml = '<ul style="list-style:none; padding:0; margin:1rem 0;">';
-      exampleMatches.forEach(match => {
-        matchesHtml += `
-          <li style="margin:1rem 0; padding:1rem; background:#f0fdfa; border-radius:8px; border:1px solid #a7f3d0;">
-            <strong>${match.name}</strong><br>
-            <em>${match.note}</em>
-          </li>
-        `;
-      });
-      matchesHtml += '</ul>';
-
-      container.innerHTML = `
-        <h1>Weekly Meetup – ${university}</h1>
-        <p class="subtitle">Connect with others pursuing your goal</p>
-
-        <div style="background:#ecfdf5; padding:1.5rem; border-radius:12px; border:1px solid #10b981; margin:1.5rem 0;">
-          <h3 style="margin-top:0; color:#10b981;">Suggested Weekly Session</h3>
-          <p><strong>Location:</strong> ${location}</p>
-          <p><strong>When:</strong> ${meetupDay} at ${meetupTime}</p>
-          <p><strong>Details:</strong> ${meetupNote}</p>
-        </div>
-
-        <div>
-          <h3 style="color:#6366f1;">Potential Matches / Attendees</h3>
-          ${matchesHtml}
-        </div>
-
-        <p style="text-align:center; font-size:0.95rem; color:#64748b; margin:2rem 0;">
-          Student-led and informal. More matches coming soon!
-        </p>
-
-        <button onclick="showDailyTaskScreen('${category}')" style="background:#6366f1; color:white; padding:1rem; border:none; border-radius:10px; font-weight:600; cursor:pointer; width:100%; margin-bottom:1rem;">
-          Back to Today's Reminder
-        </button>
-
-        <div class="change-category">
-          <a onclick="showSelectionScreen('${category}')">Change focus</a>
-        </div>
-
-        <div class="footer">
-          <a href="/terms.html">Terms of Service</a> |
-          <a href="/privacy.html">Privacy Policy</a> |
-          <a href="/contact.html">Contact</a>
-        </div>
-      `;
+    async function handleSignup() {
+      const name = document.getElementById('name').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await saveProfile(userCredential.user.uid, localStorage.getItem('nervarahUniversity'), localStorage.getItem('nervarahCategory'));
+        showSelectionScreen();
+      } catch (err) {
+        document.getElementById('errorMsg').textContent = err.message;
+      }
     }
 
-    // On page load
-    const savedCategory = localStorage.getItem('nervarahCategory');
-    const lastShown = localStorage.getItem('nervarahLastShown');
-
-    if (savedCategory && lastShown !== today) {
-      localStorage.setItem('nervarahLastShown', today);
-      showDailyTaskScreen(savedCategory);
-    } else if (savedCategory) {
-      showDailyTaskScreen(savedCategory);
-    } else {
-      showSelectionScreen();
+    async function handleLogin() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showSelectionScreen();
+      } catch (err) {
+        document.getElementById('errorMsg').textContent = err.message;
+      }
     }
-    // Add before showSelectionScreen
-function showSignupScreen() {
-  container.innerHTML = `
-    <h1>Sign Up</h1>
-    <input type="email" id="email" placeholder="school@email.edu" required>
-    <input type="password" id="password" placeholder="Password" required>
-    <button onclick="handleSignup()">Sign Up & Continue</button>
-    <p>Have account? <a onclick="showLoginScreen()">Login</a></p>
-    <div id="errorMsg" class="error"></div>
-  `;
-}
 
-function showLoginScreen() {
-  container.innerHTML = `
-    <h1>Login</h1>
-    <input type="email" id="email" placeholder="school@email.edu" required>
-    <input type="password" id="password" placeholder="Password" required>
-    <button onclick="handleLogin()">Login & Continue</button>
-    <p>New? <a onclick="showSignupScreen()">Sign Up</a></p>
-    <div id="errorMsg" class="error"></div>
-  `;
-}
-
-async function handleSignup() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  try {
-    const res = await fetch('https://unervarah.onrender.com/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, university: localStorage.getItem('nervarahUniversity'), category: localStorage.getItem('nervarahCategory') })
-    });
-    if (!res.ok) throw new Error(await res.json().error);
-    handleLogin(); // Auto-login after signup
-  } catch (err) {
-    document.getElementById('errorMsg').textContent = err.message;
-  }
-}
-
-async function handleLogin() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  try {
-    const res = await fetch('https://unervarah.onrender.com/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    localStorage.setItem('token', data.token);
-    showSelectionScreen();
-  } catch (err) {
-    document.getElementById('errorMsg').textContent = err.message;
-  }
-}
-
-// In showDailyTaskScreen: log view on load
-async function showDailyTaskScreen(category) {
-  // ... existing HTML
-  // Add at end of function:
-  fetch('https://unervarah.onrender.com/log-view', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-  }).catch(err => console.error('Log view failed'));
-}
-
-// In showMeetupsScreen: fetch real matches
-async function showMeetupsScreen(category) {
-  // ... existing HTML
-  const university = localStorage.getItem('nervarahUniversity');
-  try {
-    const res = await fetch(`https://unervarah.onrender.com/matches?university=${university}&category=${category}`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    });
-    const matches = await res.json();
-    // Use matches to build matchesHtml (as before)
-  } catch (err) {
-    // Error handling
-  }
-}
+    // ... rest of your functions (showSelectionScreen, showSchoolSelectionScreen, showDailyTaskScreen, showMeetupsScreen) remain the same
+    // Add log view in showDailyTaskScreen if needed
   </script>
 </body>
 </html>
