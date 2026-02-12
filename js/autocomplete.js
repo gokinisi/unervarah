@@ -22,5 +22,11 @@ input.addEventListener("input", () => {
       localStorage.setItem("nervarah_school", match);
     };
     results.appendChild(div);
+        <!-- your page content above -->
+
+    <script type="module" src="/js/autocomplete.js"></script>
+</body>
+</html>
+
   });
 });
