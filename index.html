@@ -700,6 +700,87 @@
     } else {
       showSelectionScreen();
     }
+    // Add before showSelectionScreen
+function showSignupScreen() {
+  container.innerHTML = `
+    <h1>Sign Up</h1>
+    <input type="email" id="email" placeholder="school@email.edu" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button onclick="handleSignup()">Sign Up & Continue</button>
+    <p>Have account? <a onclick="showLoginScreen()">Login</a></p>
+    <div id="errorMsg" class="error"></div>
+  `;
+}
+
+function showLoginScreen() {
+  container.innerHTML = `
+    <h1>Login</h1>
+    <input type="email" id="email" placeholder="school@email.edu" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button onclick="handleLogin()">Login & Continue</button>
+    <p>New? <a onclick="showSignupScreen()">Sign Up</a></p>
+    <div id="errorMsg" class="error"></div>
+  `;
+}
+
+async function handleSignup() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  try {
+    const res = await fetch('https://unervarah.onrender.com/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, university: localStorage.getItem('nervarahUniversity'), category: localStorage.getItem('nervarahCategory') })
+    });
+    if (!res.ok) throw new Error(await res.json().error);
+    handleLogin(); // Auto-login after signup
+  } catch (err) {
+    document.getElementById('errorMsg').textContent = err.message;
+  }
+}
+
+async function handleLogin() {
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  try {
+    const res = await fetch('https://unervarah.onrender.com/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    localStorage.setItem('token', data.token);
+    showSelectionScreen();
+  } catch (err) {
+    document.getElementById('errorMsg').textContent = err.message;
+  }
+}
+
+// In showDailyTaskScreen: log view on load
+async function showDailyTaskScreen(category) {
+  // ... existing HTML
+  // Add at end of function:
+  fetch('https://unervarah.onrender.com/log-view', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+  }).catch(err => console.error('Log view failed'));
+}
+
+// In showMeetupsScreen: fetch real matches
+async function showMeetupsScreen(category) {
+  // ... existing HTML
+  const university = localStorage.getItem('nervarahUniversity');
+  try {
+    const res = await fetch(`https://unervarah.onrender.com/matches?university=${university}&category=${category}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    const matches = await res.json();
+    // Use matches to build matchesHtml (as before)
+  } catch (err) {
+    // Error handling
+  }
+}
   </script>
 </body>
 </html>
