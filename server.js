@@ -190,7 +190,249 @@ app.get("/api/tips/today", requireAuth, requirePaidSchool, (req, res) => {
   });
 });
 
-app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+app.listen(3000, () => console.log("Server running on http://nervarah.com"));
+
+  import express from "express";
+import cookieParser from "cookie-parser";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import pg from "pg";
+import nodemailer from "nodemailer";
+
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+
+const { Pool } = pg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("Missing JWT_SECRET");
+
+const APP_ORIGIN = process.env.APP_ORIGIN || "http://nervarah.com"; // where frontend lives
+const FROM_EMAIL = process.env.FROM_EMAIL; // e.g. support@nervarah.com
+if (!FROM_EMAIL) throw new Error("Missing FROM_EMAIL");
+
+// --- Email transport (use your SMTP provider) ---
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: false,
+  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+});
+
+// --- Helpers ---
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+function emailDomain(email) {
+  return normalizeEmail(email).split("@")[1] || "";
+}
+function generateToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function signSession(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+}
+
+function getSession(req) {
+  const token = req.cookies.session;
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+function requireAuth(req, res, next) {
+  const s = getSession(req);
+  if (!s) return res.status(401).json({ error: "Not signed in" });
+  req.session = s;
+  next();
+}
+
+async function requireVerifiedAndPaid(req, res, next) {
+  const { user_id } = req.session;
+  const { rows } = await pool.query(
+    `
+    SELECT u.email_verified, s.paid_active, u.school_id
+    FROM users u
+    JOIN schools s ON s.id = u.school_id
+    WHERE u.id = $1
+    `,
+    [user_id]
+  );
+  if (!rows[0]) return res.status(401).json({ error: "Invalid user" });
+  if (!rows[0].email_verified) return res.status(403).json({ error: "Email not verified" });
+  if (!rows[0].paid_active) return res.status(403).json({ error: "School not active" });
+  req.school_id = rows[0].school_id;
+  next();
+}
+
+// --- AUTH: Start (send magic link) ---
+app.post("/api/auth/start", async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  if (!email.includes("@")) return res.status(400).json({ error: "Invalid email" });
+
+  const domain = emailDomain(email);
+
+  // find eligible school
+  const schoolRes = await pool.query(
+    `
+    SELECT id, name, paid_active
+    FROM schools
+    WHERE $1 = ANY(allowed_domains)
+    LIMIT 1
+    `,
+    [domain]
+  );
+
+  const school = schoolRes.rows[0];
+  if (!school || !school.paid_active) {
+    // Avoid leaking which domains are valid (good practice)
+    return res.status(403).json({ error: "This email is not eligible for access." });
+  }
+
+  // upsert user
+  const userRes = await pool.query(
+    `
+    INSERT INTO users (email, school_id, email_verified)
+    VALUES ($1, $2, false)
+    ON CONFLICT (email)
+    DO UPDATE SET school_id = EXCLUDED.school_id
+    RETURNING id
+    `,
+    [email, school.id]
+  );
+
+  const userId = userRes.rows[0].id;
+
+  // create verification token
+  const token = generateToken();
+  const tokenHash = hashToken(token);
+
+  await pool.query(
+    `
+    INSERT INTO email_verifications (user_id, token_hash, expires_at)
+    VALUES ($1, $2, NOW() + interval '30 minutes')
+    `,
+    [userId, tokenHash]
+  );
+
+  const verifyUrl = `${process.env.API_ORIGIN || "http://localhost:3000"}/api/auth/verify?token=${token}`;
+
+  // send email
+  await transporter.sendMail({
+    from: FROM_EMAIL,
+    to: email,
+    subject: "Your Nervarah sign-in link",
+    text: `Click to sign in: ${verifyUrl}\nThis link expires in 30 minutes.`,
+    html: `<p>Click to sign in:</p><p><a href="${verifyUrl}">Sign in to Nervarah</a></p><p>This link expires in 30 minutes.</p>`,
+  });
+
+  res.json({ ok: true });
+});
+
+// --- AUTH: Verify token, set session cookie, redirect ---
+app.get("/api/auth/verify", async (req, res) => {
+  const token = String(req.query.token || "");
+  if (!token) return res.status(400).send("Missing token");
+
+  const tokenHash = hashToken(token);
+
+  const { rows } = await pool.query(
+    `
+    SELECT ev.id as ev_id, ev.user_id
+    FROM email_verifications ev
+    WHERE ev.token_hash = $1
+      AND ev.used_at IS NULL
+      AND ev.expires_at > NOW()
+    LIMIT 1
+    `,
+    [tokenHash]
+  );
+
+  const ev = rows[0];
+  if (!ev) return res.status(400).send("Invalid or expired link");
+
+  // mark verification used + verify email
+  await pool.query("BEGIN");
+  try {
+    await pool.query(
+      `UPDATE email_verifications SET used_at = NOW() WHERE id = $1`,
+      [ev.ev_id]
+    );
+    await pool.query(
+      `UPDATE users SET email_verified = true WHERE id = $1`,
+      [ev.user_id]
+    );
+    await pool.query("COMMIT");
+  } catch (e) {
+    await pool.query("ROLLBACK");
+    throw e;
+  }
+
+  // issue session cookie
+  const session = signSession({ user_id: ev.user_id });
+
+  res.cookie("session", session, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false, // set true when using HTTPS in production
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  return res.redirect(`${APP_ORIGIN}/meetup.html`);
+});
+
+// --- User Profile (create/update) ---
+app.post("/api/profile", requireAuth, async (req, res) => {
+  const { full_name } = req.body;
+  await pool.query(`UPDATE users SET full_name = $1 WHERE id = $2`, [
+    String(full_name || "").slice(0, 120),
+    req.session.user_id,
+  ]);
+  res.json({ ok: true });
+});
+
+app.get("/api/profile", requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT email, full_name, email_verified FROM users WHERE id = $1`,
+    [req.session.user_id]
+  );
+  res.json(rows[0] || null);
+});
+
+// --- Protected example: tips ---
+app.get("/api/tips/today", requireAuth, requireVerifiedAndPaid, async (req, res) => {
+  res.json({ tip: "Autonomy: choose one goal. Competence: one small win. Relatedness: one reach-out." });
+});
+
+// --- Meetups list for student's school ---
+app.get("/api/meetups", requireAuth, requireVerifiedAndPaid, async (req, res) => {
+  const { rows } = await pool.query(
+    `
+    SELECT id, title, starts_at, location_name, lat, lng
+    FROM meetups
+    WHERE school_id = $1 AND starts_at > NOW() - interval '1 day'
+    ORDER BY starts_at ASC
+    LIMIT 200
+    `,
+    [req.school_id]
+  );
+  res.json(rows);
+});
+
+app.listen(3000, () => console.log("API on nervarah.com"));
+
 
 });
 
