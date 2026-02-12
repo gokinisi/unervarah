@@ -429,6 +429,106 @@ app.get("/api/meetups", requireAuth, requireVerifiedAndPaid, async (req, res) =>
     [req.school_id]
   );
   res.json(rows);
+
+  const express = require('express');
+const { MongoClient } = require('mongodb');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const uri = process.env.MONGODB_URI;
+const client = new MongoClient(uri);
+let db;
+
+client.connect().then(() => {
+  db = client.db("nervarah");
+  console.log("Connected to MongoDB");
+}).catch(err => console.error(err));
+
+const SECRET_KEY = 'your_secret_key'; // Change to strong secret (add to Render env vars)
+
+const allowedDomains = ['aamu.edu', 'irsc.edu', 'fau.edu']; // Expand as needed
+
+// Signup
+app.post('/signup', async (req, res) => {
+  const { email, password, university, category } = req.body;
+  const domain = email.split('@')[1];
+  if (!allowedDomains.includes(domain)) return res.status(403).json({ error: 'Invalid school domain' });
+
+  try {
+    const hashedPass = await bcrypt.hash(password, 10);
+    const newUser = { email, password: hashedPass, university, category, logDates: [] };
+    await db.collection('users').insertOne(newUser);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Signup failed' });
+  }
+});
+
+// Login
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await db.collection('users').findOne({ email });
+    if (!user || !await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const token = jwt.sign({ email: user.email }, SECRET_KEY, { expiresIn: '1h' });
+    res.json({ token, university: user.university, category: user.category, logDates: user.logDates });
+  } catch (err) {
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Log daily view (authenticated)
+app.post('/log-view', authenticateToken, async (req, res) => {
+  const { email } = req.user;
+  const today = new Date().toDateString();
+
+  try {
+    await db.collection('users').updateOne({ email }, { $addToSet: { logDates: today } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Log failed' });
+  }
+});
+
+// Get matches (authenticated)
+app.get('/matches', authenticateToken, async (req, res) => {
+  const { university, category } = req.query;
+  try {
+    const matches = await db.collection('users').find({ university, category, email: { $ne: req.user.email } }).toArray();
+    res.json(matches.map(() => ({ message: 'Another student at your school with the same focus' }))); // Anonymized
+  } catch (err) {
+    res.status(500).json({ error: 'Fetch matches failed' });
+  }
+});
+
+// Admin route (basic password for you)
+app.get('/admin/profiles', (req, res) => {
+  const { auth } = req.query;
+  if (auth !== 'your_admin_password') return res.status(401).json({ error: 'Unauthorized' }); // Change password
+
+  db.collection('users').find({}, { projection: { password: 0 } }).toArray() // Hide passwords
+    .then(users => res.json(users))
+    .catch(err => res.status(500).json({ error: 'Admin fetch failed' }));
+});
+
+function authenticateToken(req, res, next) {
+  const token = req.headers['authorization']?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token' });
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    req.user = user;
+    next();
+  });
+}
+
+app.listen(process.env.PORT || 3000, () => console.log('Server running'));
 });
 
 app.listen(3000, () => console.log("API on nervarah.com"));
