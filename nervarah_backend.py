@@ -91,11 +91,10 @@ def serve_sw():
 # Subscribe endpoint
 # In /subscribe
 try:
-    # your existing code
 except Exception as e:
-    print(f"Subscribe error: {str(e)}", file=sys.stderr)  # shows in Render logs
-    return jsonify({"error": "Server error - check logs"}), 500
-  @app.route('/health')
+print(f"Subscribe error: {str(e)}", file=sys.stderr)  # shows in Render logs
+return jsonify({"error": "Server error - check logs"}), 500
+@app.route('/health')
 def health():
     return "OK - app running", 200
 
