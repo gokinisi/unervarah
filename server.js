@@ -18,7 +18,7 @@ const allowedDomains = ['irsc.edu', 'fau.edu', 'ufl.edu', 'gmail.com']; // Add y
 
 // Sign-up endpoint (checks domain, creates user)
 app.post('/signup', async (req, res) => {
-  const { email, password, university, category } = req.body;
+  const { email, password,university, category } = req.body;
   const domain = email.split('@')[1];
   if (!allowedDomains.includes(domain)) {
     return res.status(403).json({ error: 'Email domain not allowed' });
@@ -469,7 +469,184 @@ app.post('/signup', async (req, res) => {
   }
 });
 
+// const express = require('express');
+const { MongoClient } = require('mongodb');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const uri = process.env.MONGODB_URI;
+const client = new MongoClient(uri);
+let db;
+
+client.connect()
+  .then(() => {
+    db = client.db("nervarah");
+    console.log("Connected to MongoDB Atlas");
+  })
+  .catch(err => console.error("MongoDB connection failed:", err));
+
+const SECRET_KEY = process.env.SECRET_KEY || 'change-this-to-a-strong-secret';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'your-admin-password-here'; // Change this!
+
+const allowedDomains = ['aamu.edu', 'irsc.edu', 'fau.edu', 'gmail.com']; // Expand as needed
+
+// Signup - creates profile with name
+app.post('/signup', async (req, res) => {
+  const { email, password, name, university, category } = req.body;
+  if (!email || !password || !university || !category) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!allowedDomains.includes(domain)) {
+    return res.status(403).json({ error: 'Email domain not allowed' });
+  }
+
+  try {
+    const existing = await db.collection('users').findOne({ email });
+    if (existing) return res.status(409).json({ error: 'Email already registered' });
+
+    const hashedPass = await bcrypt.hash(password, 10);
+    const newUser = {
+      email,
+      password: hashedPass,
+      name: name || 'Anonymous', // optional name
+      university,
+      category,
+      logDates: [],
+      createdAt: new Date()
+    };
+
+    await db.collection('users').insertOne(newUser);
+
+    // Auto-login: generate token
+    const token = jwt.sign({ email: newUser.email }, SECRET_KEY, { expiresIn: '7d' });
+    res.json({
+      success: true,
+      token,
+      user: {
+        email: newUser.email,
+        name: newUser.name,
+        university: newUser.university,
+        category: newUser.category,
+        logDates: newUser.logDates
+      }
+    });
+  } catch (err) {
+    console.error('Signup error:', err);
+    res.status(500).json({ error: 'Signup failed' });
+  }
+});
+
 // Login
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Missing email or password' });
+
+  try {
+    const user = await db.collection('users').findOne({ email });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign({ email: user.email }, SECRET_KEY, { expiresIn: '7d' });
+    res.json({
+      success: true,
+      token,
+      user: {
+        email: user.email,
+        name: user.name,
+        university: user.university,
+        category: user.category,
+        logDates: user.logDates
+      }
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Middleware to verify JWT
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'No token provided' });
+
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid or expired token' });
+    req.user = user;
+    next();
+  });
+}
+
+// Log daily view (protected)
+app.post('/log-view', authenticateToken, async (req, res) => {
+  const { email } = req.user;
+  const today = new Date().toDateString();
+
+  try {
+    await db.collection('users').updateOne(
+      { email },
+      { $addToSet: { logDates: today } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Log view error:', err);
+    res.status(500).json({ error: 'Failed to log view' });
+  }
+});
+
+// Get current user profile (protected)
+app.get('/profile', authenticateToken, async (req, res) => {
+  const { email } = req.user;
+  try {
+    const user = await db.collection('users').findOne({ email }, { projection: { password: 0 } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Admin: List all users (protected by password)
+app.get('/admin/users', (req, res) => {
+  const { auth } = req.query;
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+
+  db.collection('users').find({}, { projection: { password: 0 } }).toArray()
+    .then(users => res.json(users))
+    .catch(err => {
+      console.error('Admin users error:', err);
+      res.status(500).json({ error: 'Failed to fetch users' });
+    });
+});
+
+// Admin: School stats (count participants per school)
+app.get('/admin/schools', (req, res) => {
+  const { auth } = req.query;
+  if (auth !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Unauthorized' });
+
+  db.collection('users').aggregate([
+    { $group: { _id: "$university", count: { $sum: 1 }, emails: { $push: "$email" }, names: { $push: "$name" } } },
+    { $sort: { count: -1 } }
+  ]).toArray()
+    .then(stats => res.json(stats))
+    .catch(err => {
+      console.error('Admin schools error:', err);
+      res.status(500).json({ error: 'Failed to fetch school stats' });
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
