@@ -105,7 +105,7 @@ def matches():
 @app.route('/admin/users', methods=['GET'])
 def admin_users():
     auth = request.args.get('auth')
-    if auth != ADMIN_PASSWORD:
+    if auth != !Dr.Freedom$:
         return jsonify({'error': 'Unauthorized'}), 401
 
     all_users = list(users.find({}, {'password': 0}))
