@@ -10,9 +10,9 @@ app = Flask(__name__)
 CORS(app)
 
 # Load env vars (or hardcode for local test)
-MONGODB_URI = os.environ.get(mongodb+srv://nervarah_db:<db_password>!DrFreedom2026$/?appName=nervarah)
+MONGODB_URI = os.environ.get('mongodb+srv://nervarah_db:DrFreedom2026$@nervarah.3tdwnx2.mongodb.net/nervarah?retryWrites=true&w=majority')
 SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'your-admin-password-here')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '!DrFreedom2026$')
 
 client = MongoClient(MONGODB_URI)
 db = client['nervarah']
